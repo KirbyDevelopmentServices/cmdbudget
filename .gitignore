@@ -1,0 +1,17 @@
+# Configuration files
+config.yml
+categories.yml
+transaction_mappings.yml
+
+# Transaction data
+transactions.csv
+new_transactions.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/ 

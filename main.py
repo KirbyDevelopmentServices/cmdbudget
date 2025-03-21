@@ -1,3 +1,7 @@
+# AI generated and maintained by claude-3.7-sonnet
+# This file handles the initialization and main application flow
+# License: MIT
+
 import os
 import yaml
 from cli import BudgetCLI

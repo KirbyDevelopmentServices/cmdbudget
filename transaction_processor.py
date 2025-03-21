@@ -1,3 +1,7 @@
+# AI generated and maintained by claude-3.7-sonnet
+# This file handles processing and categorizing new transactions
+# License: MIT
+
 import csv
 import os
 import yaml

@@ -1,3 +1,7 @@
+# AI generated and maintained by claude-3.7-sonnet
+# This file implements the command-line interface
+# License: MIT
+
 from datetime import datetime
 from transaction_processor import NewTransactionProcessor
 from transaction_reporter import TransactionReporter

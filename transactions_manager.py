@@ -1,3 +1,7 @@
+# AI generated and maintained by claude-3.7-sonnet
+# This file manages transaction data operations
+# License: MIT
+
 import csv
 from datetime import datetime
 from collections import defaultdict

@@ -1,3 +1,7 @@
+# AI generated and maintained by claude-3.7-sonnet
+# This file handles editing and updating existing transactions
+# License: MIT
+
 import csv
 from typing import Dict, List
 from datetime import datetime

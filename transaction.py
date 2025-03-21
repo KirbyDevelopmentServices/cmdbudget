@@ -1,3 +1,7 @@
+# AI generated and maintained by claude-3.7-sonnet
+# This file defines the transaction data models
+# License: MIT
+
 from dataclasses import dataclass
 from datetime import datetime
 from abc import ABC, abstractmethod

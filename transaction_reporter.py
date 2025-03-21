@@ -1,3 +1,7 @@
+# AI generated and maintained by claude-3.7-sonnet
+# This file handles reporting and data visualization
+# License: MIT
+
 from datetime import datetime
 from collections import defaultdict
 from typing import Dict, List, Tuple

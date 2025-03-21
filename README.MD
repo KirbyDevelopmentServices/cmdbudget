@@ -1,5 +1,7 @@
 # cmdbudget
 
+<!-- AI generated and maintained by claude-3.7-sonnet -->
+
 > **Note:** This is a personal project by a full-time developer. I am building this project completely with the assistance of Claude 3.7 Sonnet (Anthropic) and working to improve collaboration between myself and AI. I'm pursuing this project to fulfill a personal need while radically improving my ability to use AI to augment my work.
 
 ## Overview
@@ -34,19 +36,7 @@ The tool is designed to be backward-looking, meaning it helps you understand whe
 
 ## Roadmap
 
-The following features are planned for future development:
-
-- **Complete CRUD Operations**:
-  - Full CRUD for stored transactions 
-  - Full CRUD for categories and subcategories
-  - Full CRUD for tags
-  - Full CRUD for classification rules
-
-- **Technical Improvements**:
-  - Improved transaction discovery when reading stored transactions
-  - Comprehensive test suite
-  - Performance optimizations for large transaction sets
-  - Better error handling and recovery
+For a detailed list of planned features and improvements, please see the [ROADMAP.md](ROADMAP.md) file in this repository.
 
 ## Getting Started (For Developers)
 

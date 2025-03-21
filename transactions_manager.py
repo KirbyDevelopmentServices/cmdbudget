@@ -6,6 +6,7 @@ from transaction import Transaction
 from transaction_processor import NewTransactionProcessor
 from transaction_reporter import TransactionReporter
 import yaml
+from transactions_editor import TransactionEditor
 
 class TransactionsManager:
     """Manages transaction data and operations."""
@@ -20,6 +21,7 @@ class TransactionsManager:
         self.transactions = None
         self.month_grouped_transactions = None
         self.reporter = None
+        self.editor = TransactionEditor(transactions_file, self.classifier)
 
     def load_csv(self) -> List[Dict]:
         """Reads the CSV file and returns its contents as a list of dictionaries."""
@@ -108,3 +110,11 @@ class TransactionsManager:
     def has_transactions_with_category(self, category: str) -> bool:
         """Check if any transactions use this category."""
         return any(t.category == category for t in self.transactions) 
+
+    def edit_transaction(self, transaction: Transaction) -> bool:
+        """Edit an existing transaction."""
+        result = self.editor.edit_transaction(transaction)
+        if result:
+            # Reinitialize data to include edited transactions
+            self.initialize_data()
+        return result 

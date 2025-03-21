@@ -56,56 +56,111 @@ class TransactionReporter:
         return sorted(tags)
 
     def display_month_data(self, month: int, year: int, transactions: List):
-        """Display spending data for a specific month."""
-        category_grouped = TransactionCategoryGrouper(transactions).group()
-        month_name = datetime(year, month, 1).strftime('%B %Y')
+        """Display spending data for a specific month with percentage changes."""
+        # Get previous month's data
+        prev_month = month - 1 if month > 1 else 12
+        prev_year = year if month > 1 else year - 1
+        prev_transactions = self.month_grouped_transactions.get((prev_year, prev_month), [])
         
-        print("\n" + "="*60)
-        print(f"📊 Spending Report for {month_name}".center(60))
-        print("="*60 + "\n")
+        # Group current and previous month's transactions
+        current_grouped = TransactionCategoryGrouper(transactions).group()
+        prev_grouped = TransactionCategoryGrouper(prev_transactions).group()
+        
+        month_name = datetime(year, month, 1).strftime('%B %Y')
+        prev_month_name = datetime(prev_year, prev_month, 1).strftime('%B %Y')
+        
+        print("\n" + "="*70)
+        print(f"📊 Spending Report for {month_name}".center(70))
+        print(f"(compared to {prev_month_name})".center(70))
+        print("="*70 + "\n")
 
         # Prepare data for tabulation
         table_data = []
-        total_cad = 0
-        total_usd = 0
+        totals = {"CAD": 0, "USD": 0}
+        prev_totals = {"CAD": 0, "USD": 0}
 
-        for category_name, spend_data in category_grouped.items():
-            spends = spend_data["spends"]
-            cad_amount = spends["CAD"]
-            usd_amount = spends["USD"]
-            total_cad += cad_amount
-            total_usd += usd_amount
+        def format_amount_with_change(current: float, previous: float) -> str:
+            """Format amount with percentage change in smaller font."""
+            if current == 0:
+                return "-"
+            
+            amount_str = f"${current:,.2f}"
+            
+            if previous == 0:
+                pct_str = " (\033[2m∞\033[0m)" if current > 0 else ""
+            else:
+                pct_change = ((current - previous) / previous) * 100
+                sign = "+" if pct_change > 0 else ""
+                pct_str = f" (\033[2m{sign}{pct_change:.1f}%\033[0m)"
+            
+            return amount_str + pct_str
 
-            # Only add categories with spending
-            if cad_amount > 0 or usd_amount > 0:
-                row = [
-                    category_name,
-                    f"${cad_amount:,.2f}" if cad_amount > 0 else "-",
-                    f"${usd_amount:,.2f}" if usd_amount > 0 else "-"
-                ]
-                table_data.append(row)
+        # Get all categories from both months
+        all_categories = set(current_grouped.keys()) | set(prev_grouped.keys())
+        
+        first_category = True
+        for category_name in sorted(all_categories):
+            if not first_category:
+                # Add separator between categories
+                table_data.append(["-" * 20, "-" * 25, "-" * 25])
+            else:
+                first_category = False
 
-                # Add subcategories if they exist
-                subcategories = spend_data["subcategories"]
-                if subcategories:
-                    for subcat, amount in subcategories.items():
+            current_data = current_grouped.get(category_name, {"spends": {"CAD": 0, "USD": 0}, "subcategories": {}})
+            prev_data = prev_grouped.get(category_name, {"spends": {"CAD": 0, "USD": 0}, "subcategories": {}})
+            
+            current_spends = current_data["spends"]
+            prev_spends = prev_data["spends"]
+            
+            # Calculate category totals
+            cad_amount = current_spends["CAD"]
+            prev_cad = prev_spends["CAD"]
+            usd_amount = current_spends["USD"]
+            prev_usd = prev_spends["USD"]
+            
+            totals["CAD"] += cad_amount
+            totals["USD"] += usd_amount
+            prev_totals["CAD"] += prev_cad
+            prev_totals["USD"] += prev_usd
+            
+            if cad_amount > 0 or prev_cad > 0 or usd_amount > 0 or prev_usd > 0:
+                # Add category with bold formatting
+                table_data.append([
+                    f"\033[1m{category_name}\033[0m",
+                    format_amount_with_change(cad_amount, prev_cad),
+                    format_amount_with_change(usd_amount, prev_usd)
+                ])
+
+                # Add subcategories
+                current_subcats = current_data["subcategories"]
+                prev_subcats = prev_data["subcategories"]
+                all_subcats = set(current_subcats.keys()) | set(prev_subcats.keys())
+                
+                for subcat in sorted(all_subcats):
+                    current_sub_amount = current_subcats.get(subcat, 0)
+                    prev_sub_amount = prev_subcats.get(subcat, 0)
+                    
+                    if current_sub_amount > 0 or prev_sub_amount > 0:
                         table_data.append([
                             f"  └─ {subcat}",
-                            f"${amount:,.2f}" if amount > 0 else "-",
-                            "-"
+                            format_amount_with_change(current_sub_amount, prev_sub_amount),
+                            "-"  # Assuming subcategories are only in primary currency
                         ])
 
-        # Add totals row
+        # Add separator before total
+        table_data.append(["=" * 20, "=" * 25, "=" * 25])
+
+        # Add totals row with bold formatting
         table_data.append([
-            "TOTAL",
-            f"${total_cad:,.2f}",
-            f"${total_usd:,.2f}" if total_usd > 0 else "-"
+            "\033[1mTOTAL\033[0m",
+            format_amount_with_change(totals["CAD"], prev_totals["CAD"]),
+            format_amount_with_change(totals["USD"], prev_totals["USD"])
         ])
 
         # Print the table
         print(tabulate(
             table_data,
-            headers=["Category", "CAD", "USD"],
+            headers=["\033[1mCategory\033[0m", "\033[1mCAD\033[0m", "\033[1mUSD\033[0m"],
             tablefmt="pretty",
             colalign=("left", "right", "right")
         ))

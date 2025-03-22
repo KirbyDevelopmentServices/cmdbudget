@@ -4,7 +4,7 @@
 
 > **Note:** This is a personal project by a full-time developer. I am building this project completely with the assistance of Claude 3.7 Sonnet (Anthropic) and working to improve collaboration between myself and AI. I'm pursuing this project to fulfill a personal need while radically improving my ability to use AI to augment my work. I coded the original implementation that did backwards looking reporting on transactions, but since then I let the AI do all the coding while refinine my workflow and prompts.
 
-If you want to buy me a coffee, I like coffee -> [Link](https://buymeacoffee.com/kirbydevelopmentservices).
+I like coffee. If you want to buy me a coffee -> [Link](https://buymeacoffee.com/kirbydevelopmentservices).
 
 ## Overview
 

@@ -104,15 +104,19 @@ class BudgetCLI:
         """Handle transaction management options."""
         while True:
             print("\nTransaction Management Menu:")
-            print("1. Process new transactions")
-            print("2. Back to main menu")
+            print("1. Add a new transaction")
+            print("2. Process new transactions from new_transactions.csv")
+            print("3. Back to main menu")
             
             choice = input("\nSelect an option: ")
             
             if choice == "1":
-                self.transactions_manager.process_new_transactions()
+                self.transactions_manager.add_custom_transaction()
             
             elif choice == "2":
+                self.transactions_manager.process_new_transactions()
+            
+            elif choice == "3":
                 break
             
             else:

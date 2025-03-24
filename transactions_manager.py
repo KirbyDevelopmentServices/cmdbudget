@@ -3,11 +3,12 @@
 # License: MIT
 
 import csv
-from datetime import datetime
+import os
+from datetime import datetime, date
 from collections import defaultdict
 from typing import List, Dict, Tuple
 from transaction import Transaction
-from transaction_processor import NewTransactionProcessor
+from transaction_processor import NewTransactionProcessor, TransactionClassifier
 from transaction_reporter import TransactionReporter
 import yaml
 from transactions_editor import TransactionEditor
@@ -25,6 +26,7 @@ class TransactionsManager:
         self.transactions = None
         self.month_grouped_transactions = None
         self.reporter = None
+        self.classifier = TransactionClassifier(config_file, categories_file, mappings_file)
         self.editor = TransactionEditor(transactions_file, self.classifier)
 
     def load_csv(self) -> List[Dict]:
@@ -122,3 +124,125 @@ class TransactionsManager:
             # Reinitialize data to include edited transactions
             self.initialize_data()
         return result 
+
+    def add_custom_transaction(self):
+        """Add a custom transaction manually entered by the user."""
+        print("\n=== Add Custom Transaction ===")
+        
+        # Get transaction date (default to today)
+        while True:
+            date_str = input("Transaction Date (dd/mm/yyyy) [today]: ").strip()
+            if not date_str:
+                # Default to today
+                transaction_date = date.today()
+                break
+            try:
+                transaction_date = datetime.strptime(date_str, "%d/%m/%Y").date()
+                break
+            except ValueError:
+                print("Invalid date format. Please use dd/mm/yyyy format.")
+        
+        # Get description
+        while True:
+            description = input("Description: ").strip()
+            if description:
+                break
+            print("Description cannot be empty.")
+        
+        # Get amount
+        while True:
+            amount_str = input("Amount: $").strip()
+            try:
+                amount = float(amount_str)
+                if amount <= 0:
+                    print("Amount must be positive.")
+                    continue
+                break
+            except ValueError:
+                print("Invalid amount. Please enter a valid number.")
+        
+        # Get currency (default to CAD)
+        while True:
+            print("\nSelect currency:")
+            print("1. CAD")
+            print("2. USD")
+            currency_choice = input("Select currency [1]: ").strip()
+            if not currency_choice:
+                currency = "CAD"
+                break
+            try:
+                choice = int(currency_choice)
+                if choice == 1:
+                    currency = "CAD"
+                    break
+                elif choice == 2:
+                    currency = "USD"
+                    break
+                else:
+                    print("Invalid choice. Please select 1 or 2.")
+            except ValueError:
+                print("Invalid choice. Please select 1 or 2.")
+        
+        # Check if there's an existing mapping for this description
+        category, subcategory = self.classifier.find_category(description)
+        
+        if category:
+            print(f"\nFound existing mapping for this description:")
+            print(f"Category: {category}")
+            print(f"Subcategory: {subcategory if subcategory else 'None'}")
+            use_mapping = input("Use this mapping? (y/n): ").lower().strip()
+            
+            if use_mapping != 'y':
+                # User doesn't want to use existing mapping, prompt for new categorization
+                category, subcategory = self.classifier.prompt_for_category(description)
+        else:
+            # No mapping found, prompt for categorization
+            category, subcategory = self.classifier.prompt_for_category(description)
+        
+        # Create the transaction
+        transaction = Transaction(
+            _date=transaction_date,
+            _description=description,
+            _amount=float(amount),
+            currency=currency,
+            category=category,
+            subcategory=subcategory,
+            tag="",
+            merchant=""
+        )
+        
+        # Save the transaction to CSV
+        self._append_transaction_to_file(transaction)
+        print(f"\nTransaction added successfully: {description} (${amount:.2f} {currency})")
+        
+        # Reinitialize data to include the new transaction
+        self.initialize_data()
+        return True
+    
+    def _append_transaction_to_file(self, transaction):
+        """Append a transaction to the transactions file."""
+        transaction_row = {
+            "Transaction Date": transaction.date.strftime("%m/%d/%y"),
+            "Description": transaction.description,
+            "Amount": str(transaction.amount),
+            "Currency": transaction.currency,
+            "Category": transaction.category,
+            "Subcategory": transaction.subcategory,
+            "Tag": transaction.tag,
+            "Merchant": transaction.merchant
+        }
+        
+        # Check if file exists
+        file_exists = os.path.exists(self.transactions_file)
+        
+        with open(self.transactions_file, 'a', newline='') as file:
+            fieldnames = [
+                "Transaction Date", "Description", "Amount", "Currency",
+                "Category", "Subcategory", "Tag", "Merchant"
+            ]
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            
+            if not file_exists:
+                writer.writeheader()
+                
+            writer.writerow(transaction_row) 

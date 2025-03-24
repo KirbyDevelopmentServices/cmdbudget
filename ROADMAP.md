@@ -9,7 +9,7 @@ This document outlines the development roadmap for cmdbudget, organized by core 
 - [x] Map CSV columns to required fields (description, amount, date)
 - [x] Set default currency and parameters
 - [x] Duplicate detection during import
-- [ ] Support for more date formats in imports
+- [ ] Support for more date formats in imports (partially implemented)
 - [ ] Bulk import from multiple CSV files
 - [ ] Error handling for malformed CSV files
 
@@ -19,7 +19,10 @@ This document outlines the development roadmap for cmdbudget, organized by core 
 - [x] Edit transaction details (category, subcategory, tags)
 - [x] Split transactions into multiple components
 - [x] Add custom tags to transactions
+- [x] Adding custom transactions
 - [ ] Custom file path for transactions.csv storage
+- [ ] Tagging in custom transaction entry
+- [ ] Merchant selection in custom transaction entry
 - [ ] Merge similar transactions
 - [ ] Delete transactions
 - [ ] Undo recent changes

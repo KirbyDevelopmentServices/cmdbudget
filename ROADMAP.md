@@ -19,6 +19,7 @@ This document outlines the development roadmap for cmdbudget, organized by core 
 - [x] Edit transaction details (category, subcategory, tags)
 - [x] Split transactions into multiple components
 - [x] Add custom tags to transactions
+- [ ] Custom file path for transactions.csv storage
 - [ ] Merge similar transactions
 - [ ] Delete transactions
 - [ ] Undo recent changes

@@ -56,6 +56,8 @@ This document outlines the development roadmap for cmdbudget, organized by core 
 ## Technical Improvements
 
 - [x] Command-line interface
+- [x] Transaction CRUD operations abstraction
+- [x] Multi-format date parsing
 - [ ] Comprehensive test suite
 - [ ] Performance optimizations for large transaction sets
 - [ ] Logging system

@@ -10,6 +10,7 @@ from typing import List, Dict, Tuple
 from transaction import Transaction
 from transaction_processor import NewTransactionProcessor, TransactionClassifier
 from transaction_reporter import TransactionReporter
+from transaction_operations import TransactionOperations
 import yaml
 from transactions_editor import TransactionEditor
 
@@ -28,6 +29,7 @@ class TransactionsManager:
         self.reporter = None
         self.classifier = TransactionClassifier(config_file, categories_file, mappings_file)
         self.editor = TransactionEditor(transactions_file, self.classifier)
+        self.transaction_ops = TransactionOperations()
 
     def load_csv(self) -> List[Dict]:
         """Reads the CSV file and returns its contents as a list of dictionaries."""
@@ -65,7 +67,8 @@ class TransactionsManager:
 
     @staticmethod
     def parse_date(date_str: str) -> datetime:
-        return datetime.strptime(date_str, "%m/%d/%y")
+        """Parse a date string using multiple formats."""
+        return TransactionOperations.parse_date_multi_format(date_str)
 
     def process_new_transactions(self):
         """Process transactions from new_transactions.csv"""
@@ -199,11 +202,11 @@ class TransactionsManager:
             # No mapping found, prompt for categorization
             category, subcategory = self.classifier.prompt_for_category(description)
         
-        # Create the transaction
-        transaction = Transaction(
-            _date=transaction_date,
-            _description=description,
-            _amount=float(amount),
+        # Create the transaction using our new operations class
+        transaction = self.transaction_ops.create_transaction(
+            date=transaction_date,
+            description=description,
+            amount=amount,
             currency=currency,
             category=category,
             subcategory=subcategory,
@@ -212,7 +215,7 @@ class TransactionsManager:
         )
         
         # Save the transaction to CSV
-        self._append_transaction_to_file(transaction)
+        self.transaction_ops.save_transaction(transaction, self.transactions_file)
         print(f"\nTransaction added successfully: {description} (${amount:.2f} {currency})")
         
         # Reinitialize data to include the new transaction
@@ -221,28 +224,4 @@ class TransactionsManager:
     
     def _append_transaction_to_file(self, transaction):
         """Append a transaction to the transactions file."""
-        transaction_row = {
-            "Transaction Date": transaction.date.strftime("%m/%d/%y"),
-            "Description": transaction.description,
-            "Amount": str(transaction.amount),
-            "Currency": transaction.currency,
-            "Category": transaction.category,
-            "Subcategory": transaction.subcategory,
-            "Tag": transaction.tag,
-            "Merchant": transaction.merchant
-        }
-        
-        # Check if file exists
-        file_exists = os.path.exists(self.transactions_file)
-        
-        with open(self.transactions_file, 'a', newline='') as file:
-            fieldnames = [
-                "Transaction Date", "Description", "Amount", "Currency",
-                "Category", "Subcategory", "Tag", "Merchant"
-            ]
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
-            
-            if not file_exists:
-                writer.writeheader()
-                
-            writer.writerow(transaction_row) 
+        return self.transaction_ops.save_transaction(transaction, self.transactions_file) 

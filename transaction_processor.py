@@ -9,6 +9,7 @@ import logging
 from typing import Set, List
 from datetime import datetime
 from transaction import Transaction, RawTransaction
+from transaction_operations import TransactionOperations
 from pprint import pprint, pformat
 
 logging.basicConfig(level=logging.INFO)
@@ -152,6 +153,7 @@ class NewTransactionProcessor:
         self.transactions_file = transactions_file
         self.classifier = TransactionClassifier(config_file, categories_file, mappings_file)
         self.existing_transactions: Set[Transaction] = set()
+        self.transaction_ops = TransactionOperations()
 
     def load_existing_transactions(self) -> Set[Transaction]:
         """Load and hash all existing transactions."""
@@ -165,22 +167,8 @@ class NewTransactionProcessor:
 
     @staticmethod
     def parse_date(date_str: str) -> datetime:
-        # Try multiple date formats
-        formats = [
-            "%m/%d/%y",     # 01/15/23
-            "%m/%d/%Y",     # 01/15/2023
-            "%Y-%m-%d",     # 2023-01-15
-            "%d/%m/%y",     # 15/01/23
-            "%d/%m/%Y"      # 15/01/2023
-        ]
-        
-        for date_format in formats:
-            try:
-                return datetime.strptime(date_str, date_format)
-            except ValueError:
-                continue
-                
-        raise ValueError(f"Unable to parse date: {date_str}")
+        """Parse a date string using multiple formats."""
+        return TransactionOperations.parse_date_multi_format(date_str)
 
     def process(self) -> bool:
         """Process transactions from new_transactions.csv"""
@@ -236,18 +224,8 @@ class NewTransactionProcessor:
                             subcategory
                         )
                         
-                        transaction_row = {
-                            "Transaction Date": transaction.date.strftime("%m/%d/%y"),
-                            "Description": transaction.description,
-                            "Amount": str(transaction.amount),
-                            "Currency": transaction.currency,
-                            "Category": transaction.category,
-                            "Subcategory": transaction.subcategory,
-                            "Tag": transaction.tag,
-                            "Merchant": transaction.merchant
-                        }
-
-                        self._append_transaction_to_file(transaction_row)
+                        transaction_row = self.transaction_ops.transaction_to_row(transaction)
+                        self.transaction_ops.append_transaction_to_file(transaction_row, self.transactions_file)
                         processed_count += 1
                         logger.info(f"Added transaction: {transaction.description}")
                         continue
@@ -297,20 +275,8 @@ class NewTransactionProcessor:
                             subcategory
                         )
                         
-                        # Convert to row for CSV
-                        transaction_row = {
-                            "Transaction Date": transaction.date.strftime("%m/%d/%y"),
-                            "Description": transaction.description,
-                            "Amount": str(transaction.amount),
-                            "Currency": transaction.currency,
-                            "Category": transaction.category,
-                            "Subcategory": transaction.subcategory,
-                            "Tag": transaction.tag,
-                            "Merchant": transaction.merchant
-                        }
-
-                        # Immediately write the transaction to the file
-                        self._append_transaction_to_file(transaction_row)
+                        # Save transaction using our operations class
+                        self.transaction_ops.save_transaction(transaction, self.transactions_file)
                         processed_count += 1
                         logger.info(f"Added transaction: {transaction.description}")
 
@@ -338,16 +304,19 @@ class NewTransactionProcessor:
     def _handle_split_transaction(self, raw_transaction: RawTransaction, exact_amount: float):
         """Handle splitting a transaction into multiple parts."""
         # Prepare the original SPLIT transaction
-        split_transactions = [{
-            "Transaction Date": raw_transaction.date.strftime("%m/%d/%y"),
-            "Description": raw_transaction.description,
-            "Amount": str(exact_amount),
-            "Currency": self.classifier.config['csv_structure']['default_currency'],
-            "Category": "SPLIT",
-            "Subcategory": "",
-            "Tag": "",
-            "Merchant": ""
-        }]
+        split_transaction = self.transaction_ops.create_transaction(
+            date=raw_transaction.date,
+            description=raw_transaction.description,
+            amount=exact_amount,
+            currency=self.classifier.config['csv_structure']['default_currency'],
+            category="SPLIT",
+            subcategory="",
+            tag="",
+            merchant=""
+        )
+        
+        # Save the SPLIT transaction
+        self.transaction_ops.save_transaction(split_transaction, self.transactions_file)
         
         remaining_amount = exact_amount
         
@@ -377,23 +346,20 @@ class NewTransactionProcessor:
             # Get category and subcategory for the split
             category, subcategory = self.classifier.prompt_for_category(split_description)
             
-            # Add the split transaction to our list
-            split_transactions.append({
-                "Transaction Date": raw_transaction.date.strftime("%m/%d/%y"),
-                "Description": split_description,
-                "Amount": str(split_amount),
-                "Currency": self.classifier.config['csv_structure']['default_currency'],
-                "Category": category,
-                "Subcategory": subcategory,
-                "Tag": "",
-                "Merchant": ""
-            })
+            # Create and save the split transaction
+            split_transaction = self.transaction_ops.create_transaction(
+                date=raw_transaction.date,
+                description=split_description,
+                amount=split_amount,
+                currency=self.classifier.config['csv_structure']['default_currency'],
+                category=category,
+                subcategory=subcategory,
+                tag="",
+                merchant=""
+            )
             
+            self.transaction_ops.save_transaction(split_transaction, self.transactions_file)
             remaining_amount -= split_amount
-        
-        # Write all transactions at once
-        for transaction in split_transactions:
-            self._append_transaction_to_file(transaction)
 
     def _process_categorization(self, raw_transaction: RawTransaction) -> tuple[str, str]:
         """Handle the categorization process for a transaction."""
@@ -411,10 +377,4 @@ class NewTransactionProcessor:
 
     def _append_transaction_to_file(self, transaction_row: dict):
         """Append a single transaction to the transactions file."""
-        file_exists = os.path.exists(self.transactions_file)
-        
-        with open(self.transactions_file, 'a', newline='') as file:
-            writer = csv.DictWriter(file, fieldnames=list(transaction_row.keys()))
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(transaction_row) 
+        return self.transaction_ops.append_transaction_to_file(transaction_row, self.transactions_file) 

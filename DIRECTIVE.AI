@@ -124,7 +124,10 @@ The application follows a modular architecture with clear separation of concerns
 ## Configuration
 
 The system uses three main configuration files:
-1. `config.yml`: CSV column mappings and defaults
+1. `config.yml`: Contains:
+    - `csv_structure`: CSV column mappings and default currency.
+    - `storage`: Configuration related to data storage, including:
+        - `transaction_file_path`: The path (relative or absolute) to the main transaction CSV file (defaults to `transactions.csv`).
 2. `categories.yml`: Category and subcategory definitions
 3. `transaction_mappings.yml`: Rules for automatic categorization
 

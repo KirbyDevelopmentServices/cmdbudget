@@ -112,21 +112,70 @@ You may want to edit these files before importing transactions to match your spe
 
 ## Configuration
 
-### CSV Structure
+The application uses YAML files for configuration. Default files are created on the first run if they don't exist.
 
-Edit `config.yml` to match your bank's CSV export format:
+### `config.yml` Structure
+
+This file controls CSV import settings and storage locations. Edit it to match your bank's CSV export format and preferred storage path.
+
+**Example `config.yml`:**
 
 ```yaml
 csv_structure:
-  description_column: 'Description'  # Column containing transaction description
-  amount_column: 'Amount'            # Column containing transaction amount
-  date_column: 'Transaction Date'    # Column containing transaction date
-  default_currency: 'CAD'            # Default currency
+  # Name of the column in your CSV containing the transaction description
+  description_column: 'Description 1'
+  
+  # Name of the column containing the transaction amount 
+  # (ensure this corresponds to your default currency if multiple currency columns exist)
+  amount_column: 'CAD$'
+  
+  # Name of the column containing the transaction date
+  date_column: 'Transaction Date'
+  
+  # Default currency to assume for transactions (e.g., CAD, USD)
+  default_currency: 'CAD'
+
+storage:
+  # Path (relative or absolute) where the main transaction data will be stored.
+  # The directory will be created if it doesn't exist.
+  # Defaults to 'transactions.csv' in the project root if not specified.
+  transaction_file_path: 'data/transactions.csv'
 ```
 
-### Custom Categories
+### `categories.yml`
 
-Edit `categories.yml` to define your own spending categories and subcategories.
+Edit this file to define your custom spending categories and optional subcategories.
+
+**Example `categories.yml`:**
+```yaml
+categories:
+  Groceries:
+    - Supermarket
+    - Corner Store
+  Entertainment:
+    - Movies
+    - Dining Out
+    - Streaming Services
+  Housing: [] # Example category with no subcategories yet
+  # System categories (required, do not remove)
+  IGNORED: [] 
+  SPLIT: [] 
+```
+
+### `transaction_mappings.yml`
+
+This file stores rules for automatic categorization based on transaction descriptions. The application populates this file as you categorize transactions and choose to save the mapping.
+
+**Example `transaction_mappings.yml`:**
+```yaml
+mappings:
+  'AMAZON PRIME VIDEO':
+    category: Entertainment
+    subcategory: Streaming Services
+  'TIM HORTONS':
+    category: Dining Out
+    subcategory: Coffee
+```
 
 ---
 

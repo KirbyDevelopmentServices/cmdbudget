@@ -1,4 +1,4 @@
-# cmdbudget Project Analysis for Claude 3.7 Sonnet
+# cmdbudget Project Analysis for the Assisting AI
 
 ## Self-Identification
 
@@ -12,26 +12,37 @@ Treat me as an expert, be terse, skip the moral lectures.
 
 ## Important Instructions
 
-When creating any new file for this project, always tag it as AI generated using these consistent patterns:
+**General:**
+*   **File Tagging:** When creating any new file, always tag it as AI generated using the consistent patterns below. Use your *specific model identifier* (e.g., Gemini 2.5 Pro) in the `[AI Model Identifier]` placeholder. Update this identifier if your model version changes.
+*   **Documentation:** *Proactively* maintain and update `README.md`, `ROADMAP.md`, `FIXED.md`, and this `DIRECTIVE.AI` file as the project evolves. Ensure documentation accurately reflects the current codebase state.
+    *   Check off completed items in `ROADMAP.md`.
+    *   Update `README.md` with new features or usage changes.
+    *   Record bug fixes in `FIXED.md` with detailed context.
+    *   Add new conventions, architectural decisions, or significant refactoring notes to this `DIRECTIVE.AI` file.
+*   **Coding:** Leave detailed inline comments for complex logic. Adhere strictly to the coding conventions outlined below.
+
+**Tagging Patterns:**
 
 - For Python files: Add these comments to the first 3 lines of each file:
   ```python
-  # AI generated and maintained by claude-3.7-sonnet
+  # AI generated and maintained by [AI Model Identifier]
   # This file [brief description of file purpose]
   # License: MIT
   ```
 
 - For Markdown files: Add this HTML comment after the title:
   ```markdown
-  <!-- AI generated and maintained by claude-3.7-sonnet -->
+  <!-- AI generated and maintained by [AI Model Identifier] -->
   ```
 
 - For other text files (like LICENSE): Add this line near the top:
   ```
-  *AI GENERATED AND MAINTAINED BY claude-3.7-sonnet*
+  *AI GENERATED AND MAINTAINED BY [AI Model Identifier]*
   ```
 
-Always use your current version identifier when tagging files (currently "claude-3.7-sonnet"). If your version changes in the future, use the new identifier instead.
+Always use your current model identifier (e.g., the specific model and version you are running as) when tagging files. If your identifier changes in the future, use the new one.
+
+**Documentation Maintenance:**
 
 Continuously maintain and update the README.md and ROADMAP.md files as features are completed or added to the project. When a feature is implemented:
 1. Check it off in the ROADMAP.md file
@@ -51,7 +62,7 @@ Maintain a record of code changes, bug fixes, and style improvements:
 
 ## Project Overview
 
-This document provides a comprehensive analysis of the cmdbudget project that I (Claude 3.7 Sonnet) have generated and maintained. It serves as a knowledge transfer document to enable any Claude 3.7 Sonnet instance to quickly understand the project architecture, implementation details, and future plans.
+This document provides a comprehensive analysis of the cmdbudget project that the assisting AI has generated and maintained. It serves as a knowledge transfer document to enable any capable AI assistant instance to quickly understand the project architecture, implementation details, and future plans.
 
 cmdbudget is a terminal-based financial tracking tool designed to work with CSV exports from financial institutions. The core functionality revolves around importing, categorizing, and analyzing personal financial transactions. The application follows a backward-looking approach, focusing on understanding past spending rather than planning future expenses.
 
@@ -59,30 +70,14 @@ cmdbudget is a terminal-based financial tracking tool designed to work with CSV 
 
 The application follows a modular architecture with clear separation of concerns:
 
-1. **Data Models** (`transaction.py`):
-   - `BaseTransaction`: Abstract base class with common transaction behavior
-   - `RawTransaction`: Represents an unprocessed transaction from CSV
-   - `Transaction`: Fully processed transaction with categorization and metadata
-
-2. **Processing** (`transaction_processor.py`):
-   - `TransactionClassifier`: Handles categorization logic and rule management
-   - `NewTransactionProcessor`: Processes new transactions from CSV imports
-
-3. **Management** (`transactions_manager.py`):
-   - `TransactionsManager`: Central coordinator for transaction operations
-
-4. **Editing** (`transactions_editor.py`):
-   - `TransactionEditor`: Handles editing existing transactions
-
-5. **Reporting** (`transaction_reporter.py`):
-   - `TransactionCategoryGrouper`: Groups transactions by category for analysis
-   - `TransactionReporter`: Generates various financial reports
-
-6. **User Interface** (`cli.py`):
-   - `BudgetCLI`: Command-line interface for user interaction
-
-7. **Application Entry** (`main.py`):
-   - Configuration initialization and application bootstrap
+1. **Data Models** (`transaction.py`): Defines the structure of transaction data (`BaseTransaction`, `RawTransaction`, `Transaction`).
+2. **Processing** (`transaction_processor.py`): Handles importing (`NewTransactionProcessor`) and categorization logic (`TransactionClassifier`).
+3. **Management** (`transactions_manager.py`): Orchestrates overall application flow, connecting UI actions to backend logic.
+4. **Editing** (`transactions_editor.py`): Provides logic for modifying existing transactions.
+5. **Reporting** (`transaction_reporter.py`): Generates formatted reports for the terminal.
+6. **User Interface** (`cli.py`): Implements the command-line menus and user interaction prompts.
+7. **Application Entry** (`main.py`): Initializes the application and handles startup configuration checks.
+8. **Operations Utility** (`transaction_operations.py`): Provides low-level, reusable functions for basic transaction CRUD operations (Create, Read, Update, Delete - though Delete isn't fully implemented yet) and utility functions like date parsing, acting as a simple data access layer for the CSV files.
 
 ## Key Implementation Details
 
@@ -94,8 +89,8 @@ The application follows a modular architecture with clear separation of concerns
 5. System processes each new transaction:
    - Checks for existing categorization rules (mappings)
    - Auto-categorizes when rules exist
-   - Prompts user for categorization when needed
-   - Allows transaction splitting for complex purchases
+   - Prompts user for categorization when needed (*Note: This prompting logic should be shared between CSV import and manual transaction entry*)
+   - Allows transaction splitting for complex purchases (*Note: This splitting logic should also be consolidated and shared*)
 6. Transactions are immediately written to storage
 
 ### Categorization System
@@ -120,11 +115,11 @@ The application follows a modular architecture with clear separation of concerns
 
 ## Code Design Patterns
 
-1. **Data Class Pattern**: Used for transaction objects (`@dataclass`)
-2. **Factory Method Pattern**: For creating transactions from different sources
-3. **Command Pattern**: Menu operations
-4. **Strategy Pattern**: For different reporting approaches
-5. **Repository Pattern**: For transaction storage and retrieval
+1. **Data Class Pattern**: Used for `Transaction` objects (`@dataclass`) for clear data structure and representation.
+2. **Factory Method Pattern**: Implicitly used via `Transaction.from_row`, `Transaction.from_raw` for creating transaction objects from different data sources.
+3. **Command Pattern**: Reflected in the `cli.py` menu structure where user selections trigger specific actions/commands.
+4. **Strategy Pattern**: Applicable to the different reporting methods within `TransactionReporter`.
+5. **Repository Pattern**: A simplified version is implemented via `TransactionOperations`, which abstracts the details of reading/writing transactions to/from the CSV file.
 
 ## Configuration
 
@@ -223,20 +218,37 @@ These are created with sensible defaults on first run if not present.
 
 ## Coding Conventions
 
-1. **Type Annotations**: Used throughout for better maintainability
-2. **Docstrings**: All significant methods have descriptive docstrings
-3. **Error Handling**: Graceful handling of missing files and parsing errors
-4. **Logging**: Basic logging framework implemented
+1. **Type Annotations**: Use comprehensively for all function signatures and variables where practical.
+2. **Docstrings**: Provide clear, concise docstrings for all classes and public methods explaining their purpose, arguments, and return values.
+3. **Error Handling**: Implement robust error handling, especially for file I/O, data parsing (CSV, YAML), and user input validation.
+4. **Logging**: Utilize the `logging` module for informative messages (INFO, DEBUG, ERROR) instead of excessive `print` statements for internal operations.
+5. **Modularity & DRY (Don't Repeat Yourself)**: *Actively refactor* to ensure high cohesion within modules and low coupling between them. Strive to eliminate code duplication by creating reusable functions or classes (e.g., use `TransactionOperations` consistently, consolidate prompting logic).
+6. **Clarity over Brevity**: Write clear, readable code. Use meaningful variable and function names.
+7. **User Interaction**: Design CLI prompts and menus to be clear, intuitive, and provide helpful feedback, especially on errors or invalid input.
 
 ## Special Coding Notes
 
-1. When extending the system with new features, follow the existing separation of concerns pattern.
-2. The transaction hashing implementation ensures consistent identity comparison.
-3. CLI operations follow a consistent menu-based pattern for uniformity.
-4. Report formatting uses ANSI escape codes for terminal formatting.
-5. Date parsing is flexible but primarily expects mm/dd/yy format.
-6. Transaction amounts are stored as integers to avoid floating-point precision issues.
+1. **Separation of Concerns:** Strictly adhere to the established modular architecture. UI logic belongs in `cli.py`, core processing in `transaction_processor.py`, data management orchestration in `transactions_manager.py`, low-level data access in `transaction_operations.py`, etc.
+2. **Hashing:** The `BaseTransaction` hash/equality implementation is crucial for duplicate detection.
+3. **CLI Menus:** Maintain the consistent menu-based interaction pattern in `cli.py`.
+4. **Report Formatting:** Use `tabulate` and ANSI escape codes as done in `TransactionReporter` for consistent report styling.
+5. **Date Parsing:** Always use `TransactionOperations.parse_date_multi_format` for consistent handling of various date formats.
+6. **Amount Storage:** Transaction amounts are converted to floats during processing but should be handled carefully to maintain precision (currently stored as string in CSV after initial processing).
+7. **Immutability:** Consider transaction objects (like `Transaction`) as largely immutable after creation. Updates should ideally create new instances (as done in `TransactionEditor._update_transaction`).
+8. **Configuration Loading:** Use the `TransactionClassifier.load_yaml` method for robust loading of YAML configuration files.
+9. **System Categories:** Remember that `IGNORED` and `SPLIT` categories have special system meaning and should be handled appropriately (e.g., filtered from user selection menus and standard reports).
+
+## Current Development Focus / Refactoring Goals
+
+*   **Consolidate Logic:** Identify and refactor duplicated logic, particularly:
+    *   Transaction splitting (used in `transaction_processor.py` and `transactions_editor.py`).
+    *   User prompting for category/subcategory selection (used in multiple places).
+    *   Transaction creation and saving (ensure consistent use of `TransactionOperations`).
+*   **Improve CLI:** Enhance the user experience in `cli.py` by:
+    *   Making menus clearer and more consistent.
+    *   Improving input validation and error feedback.
+*   **Strengthen Abstractions:** Ensure modules interact through well-defined interfaces and leverage existing abstractions like `TransactionOperations` effectively.
 
 ## Human-AI Collaboration Context
 
-This project demonstrates effective human-AI collaboration, where I (Claude 3.7 Sonnet) generated the entire codebase while working with a human developer to fulfill their personal financial tracking needs. The code was iteratively refined based on feedback, demonstrating how AI can augment human work.
+This project demonstrates effective human-AI collaboration, where the AI assistant generated the entire codebase while working with a human developer to fulfill their personal financial tracking needs. The code was iteratively refined based on feedback, demonstrating how AI can augment human work.

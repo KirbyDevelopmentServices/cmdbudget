@@ -6,6 +6,7 @@ import csv
 from typing import Dict, List
 from datetime import datetime
 from transaction import Transaction
+from transaction_operations import TransactionOperations
 
 class TransactionEditor:
     def __init__(self, transactions_file: str, classifier):
@@ -138,7 +139,7 @@ class TransactionEditor:
             with open(self.transactions_file, 'r') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
-                    transactions.append(Transaction.from_row(row, self._parse_date))
+                    transactions.append(Transaction.from_row(row, TransactionOperations.parse_date_multi_format))
         except FileNotFoundError:
             print(f"No transactions file found at {self.transactions_file}")
         return transactions
@@ -168,23 +169,4 @@ class TransactionEditor:
                     "Subcategory": transaction.subcategory,
                     "Tag": transaction.tag,
                     "Merchant": transaction.merchant
-                })
-
-    @staticmethod
-    def _parse_date(date_str: str) -> datetime:
-        """Parse date string to datetime object."""
-        formats = [
-            "%m/%d/%y",     # 01/15/23
-            "%m/%d/%Y",     # 01/15/2023
-            "%Y-%m-%d",     # 2023-01-15
-            "%d/%m/%y",     # 15/01/23
-            "%d/%m/%Y"      # 15/01/2023
-        ]
-        
-        for date_format in formats:
-            try:
-                return datetime.strptime(date_str, date_format)
-            except ValueError:
-                continue
-                
-        raise ValueError(f"Unable to parse date: {date_str}") 
+                }) 

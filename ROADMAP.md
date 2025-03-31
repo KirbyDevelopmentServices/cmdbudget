@@ -20,7 +20,7 @@ This document outlines the development roadmap for cmdbudget, organized by core 
 - [x] Split transactions into multiple components
 - [x] Add custom tags to transactions
 - [x] Adding custom transactions
-- [ ] Custom file path for transactions.csv storage
+- [x] Custom file path for transactions.csv storage
 - [ ] Tagging in custom transaction entry
 - [ ] Merchant selection in custom transaction entry
 - [ ] Merge similar transactions

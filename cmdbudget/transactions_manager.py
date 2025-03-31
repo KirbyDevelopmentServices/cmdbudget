@@ -7,12 +7,19 @@ import os
 from datetime import datetime, date
 from collections import defaultdict
 from typing import List, Dict, Tuple
-from transaction import Transaction
-from transaction_processor import NewTransactionProcessor, TransactionClassifier
-from transaction_reporter import TransactionReporter
-from transaction_operations import TransactionOperations
+from .transaction import Transaction
+from .transaction_processor import NewTransactionProcessor, TransactionClassifier
+from .transaction_reporter import TransactionReporter
+from .transaction_operations import TransactionOperations
 import yaml
-from transactions_editor import TransactionEditor
+from .transactions_editor import TransactionEditor
+from .user_input import prompt_for_date, prompt_for_description, prompt_for_amount, prompt_for_currency
+from .utils import parse_date_multi_format
+from .display import Display
+import logging
+
+# Get a logger for this module
+logger = logging.getLogger(__name__)
 
 class TransactionsManager:
     """Manages transaction data and operations."""
@@ -38,12 +45,24 @@ class TransactionsManager:
                 reader = csv.DictReader(file)
                 return list(reader)
         except FileNotFoundError:
-            print(f"Error: The file '{self.transactions_file}' was not found.")
+            logger.error(f"The file '{self.transactions_file}' was not found.")
+            Display.error(f"Transaction file not found: {self.transactions_file}")
+            return None
         except Exception as e:
-            print(f"Error reading file '{self.transactions_file}': {e}")
+            logger.error(f"Error reading file '{self.transactions_file}': {e}", exc_info=True)
+            Display.error(f"Error reading transaction file: {e}")
+            return None
 
     def initialize_data(self):
         """Load and organize all transaction data upfront."""
+        self.data = self.load_csv()
+        if self.data is None:
+            logger.error("Failed to load transaction data. Cannot initialize.")
+            self.transactions = []
+            self.month_grouped_transactions = {}
+            self.reporter = TransactionReporter([], {})
+            return
+
         self.transactions = self.build_transactions()
         # Include IGNORED transactions in storage but not in reporting
         self.month_grouped_transactions = self.group_by_month(self.transactions)
@@ -51,7 +70,7 @@ class TransactionsManager:
 
     def build_transactions(self) -> List[Transaction]:
         """Build Transaction objects from CSV data."""
-        return [Transaction.from_row(row, self.parse_date) for row in self.data]
+        return [Transaction.from_row(row, parse_date_multi_format) for row in self.data]
 
     def group_by_month(self, transactions: List[Transaction]) -> Dict[Tuple[int, int], List[Transaction]]:
         """Group transactions by month."""
@@ -64,11 +83,6 @@ class TransactionsManager:
     def get_transactions_for_month(self, month_key: Tuple[int, int]) -> List[Transaction]:
         """Get all transactions for a specific month."""
         return self.month_grouped_transactions[month_key]
-
-    @staticmethod
-    def parse_date(date_str: str) -> datetime:
-        """Parse a date string using multiple formats."""
-        return TransactionOperations.parse_date_multi_format(date_str)
 
     def process_new_transactions(self):
         """Process transactions from new_transactions.csv"""
@@ -130,78 +144,30 @@ class TransactionsManager:
 
     def add_custom_transaction(self):
         """Add a custom transaction manually entered by the user."""
-        print("\n=== Add Custom Transaction ===")
-        
-        # Get transaction date (default to today)
-        while True:
-            date_str = input("Transaction Date (dd/mm/yyyy) [today]: ").strip()
-            if not date_str:
-                # Default to today
-                transaction_date = date.today()
-                break
-            try:
-                transaction_date = datetime.strptime(date_str, "%d/%m/%Y").date()
-                break
-            except ValueError:
-                print("Invalid date format. Please use dd/mm/yyyy format.")
-        
-        # Get description
-        while True:
-            description = input("Description: ").strip()
-            if description:
-                break
-            print("Description cannot be empty.")
-        
-        # Get amount
-        while True:
-            amount_str = input("Amount: $").strip()
-            try:
-                amount = float(amount_str)
-                if amount <= 0:
-                    print("Amount must be positive.")
-                    continue
-                break
-            except ValueError:
-                print("Invalid amount. Please enter a valid number.")
-        
-        # Get currency (default to CAD)
-        while True:
-            print("\nSelect currency:")
-            print("1. CAD")
-            print("2. USD")
-            currency_choice = input("Select currency [1]: ").strip()
-            if not currency_choice:
-                currency = "CAD"
-                break
-            try:
-                choice = int(currency_choice)
-                if choice == 1:
-                    currency = "CAD"
-                    break
-                elif choice == 2:
-                    currency = "USD"
-                    break
-                else:
-                    print("Invalid choice. Please select 1 or 2.")
-            except ValueError:
-                print("Invalid choice. Please select 1 or 2.")
-        
+        Display.header("Add Custom Transaction", level=2)
+
+        # Get transaction details using imported functions
+        transaction_date = prompt_for_date()
+        description = prompt_for_description()
+        amount = prompt_for_amount()
+        currency = prompt_for_currency()
+
         # Check if there's an existing mapping for this description
         category, subcategory = self.classifier.find_category(description)
-        
+
         if category:
-            print(f"\nFound existing mapping for this description:")
-            print(f"Category: {category}")
-            print(f"Subcategory: {subcategory if subcategory else 'None'}")
-            use_mapping = input("Use this mapping? (y/n): ").lower().strip()
-            
+            Display.message(f"\nFound existing mapping for this description:")
+            Display.message(f"Category: {category}")
+            Display.message(f"Subcategory: {subcategory if subcategory else 'None'}")
+            use_mapping = Display.prompt("Use this mapping? (y/n): ").lower().strip()
+
             if use_mapping != 'y':
                 # User doesn't want to use existing mapping, prompt for new categorization
                 category, subcategory = self.classifier.prompt_for_category(description)
         else:
             # No mapping found, prompt for categorization
             category, subcategory = self.classifier.prompt_for_category(description)
-        
+
         # Create the transaction using our new operations class
         transaction = self.transaction_ops.create_transaction(
             date=transaction_date,
@@ -210,18 +176,22 @@ class TransactionsManager:
             currency=currency,
             category=category,
             subcategory=subcategory,
-            tag="",
+            tag="",  # TODO: Maybe prompt for tag/merchant here?
             merchant=""
         )
-        
+
         # Save the transaction to CSV
-        self.transaction_ops.save_transaction(transaction, self.transactions_file)
-        print(f"\nTransaction added successfully: {description} (${amount:.2f} {currency})")
-        
-        # Reinitialize data to include the new transaction
-        self.initialize_data()
-        return True
-    
+        if self.transaction_ops.save_transaction(transaction, self.transactions_file):
+             Display.message(f"\nTransaction added successfully: {description} (${amount:.2f} {currency})")
+             # Reinitialize data to include the new transaction
+             self.initialize_data()
+             return True
+        else:
+            Display.error("Error adding transaction. Check logs for details.")
+            return False
+
     def _append_transaction_to_file(self, transaction):
-        """Append a transaction to the transactions file."""
+        """DEPRECATED: Append a transaction to the transactions file."""
+        logger.warning("_append_transaction_to_file is deprecated. Use transaction_ops.save_transaction.")
+        # Deprecated - use transaction_ops.save_transaction directly
         return self.transaction_ops.save_transaction(transaction, self.transactions_file) 

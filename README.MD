@@ -83,22 +83,24 @@ This project uses Poetry for dependency management.
 
 ### Running the Application
 
-Run the application using Poetry:
+Run the application using the Poetry script:
 
 ```bash
-poetry run python cmdbudget/main.py
+poetry run cmdbudget
 ```
 
-Or if you're already in the Poetry shell:
+This command executes the main entry point defined in `pyproject.toml`.
+
+Alternatively, if you have activated the Poetry shell (`poetry shell`), you can run:
 
 ```bash
-python cmdbudget/main.py
+cmdbudget
 ```
 
 ### First-time Setup
 
-On first run, the application will automatically create default configuration files:
-- `config.yml`: Contains CSV structure configuration
+On first run, the application will automatically create default configuration files in the project's root directory:
+- `config.yml`: Contains CSV structure configuration and file paths.
 - `categories.yml`: Contains default categories
 - `transaction_mappings.yml`: Initially empty, will store your category mapping rules
 
@@ -106,27 +108,85 @@ You may want to edit these files before importing transactions to match your spe
 
 ### Importing Transactions
 
-1. Place your bank's CSV export in the project directory as `new_transactions.csv`
-2. Run the application and select the import option
+1. Place your bank's CSV export in the project directory. The default filename expected is `new_transactions.csv`, but this can be configured in `config.yml`.
+2. Run the application (`poetry run cmdbudget`) and select the import option from the "Manage Transactions" menu.
 3. Follow the prompts to categorize new transactions
 
 ## Configuration
 
-### CSV Structure
+The application uses YAML files for configuration. Default files are created on the first run if they don't exist.
 
-Edit `config.yml` to match your bank's CSV export format:
+### `config.yml` Structure
+
+This file controls CSV import settings and storage locations. Edit it to match your bank's CSV export format and preferred storage path. All paths are relative to the project root unless an absolute path is given.
+
+**Example `config.yml`:**
 
 ```yaml
 csv_structure:
-  description_column: 'Description'  # Column containing transaction description
-  amount_column: 'Amount'            # Column containing transaction amount
-  date_column: 'Transaction Date'    # Column containing transaction date
-  default_currency: 'CAD'            # Default currency
+  # Name of the column in your CSV containing the transaction description
+  description_column: 'Description 1'
+  
+  # Name of the column containing the transaction amount 
+  # (ensure this corresponds to your default currency if multiple currency columns exist)
+  amount_column: 'CAD$'
+  
+  # Name of the column containing the transaction date
+  date_column: 'Transaction Date'
+  
+  # Default currency to assume for transactions (e.g., CAD, USD)
+  # Will be used if no specific currency column is identified (future feature)
+  default_currency: 'CAD'
+
+  # Set to true if expenses/debits are positive numbers in your CSV.
+  # Set to false if expenses/debits are negative numbers.
+  # Defaults to true if not specified.
+  expenses_are_positive: true
+
+storage:
+  # Path (relative or absolute) where the main transaction data will be stored.
+  # Defaults to 'transactions.csv' in the project root if 'storage' section is missing.
+  transaction_file_path: 'transactions.csv'
+
+  # Path (relative or absolute) where the CSV file for new imports is located.
+  # Defaults to 'new_transactions.csv' in the project root if 'storage' section is missing.
+  new_transaction_file_path: 'new_transactions.csv'
 ```
 
-### Custom Categories
+### `categories.yml`
 
-Edit `categories.yml` to define your own spending categories and subcategories.
+Edit this file to define your custom spending categories and optional subcategories.
+
+**Example `categories.yml`:**
+```yaml
+categories:
+  Groceries:
+    - Supermarket
+    - Corner Store
+  Entertainment:
+    - Movies
+    - Dining Out
+    - Streaming Services
+  Housing: [] # Example category with no subcategories yet
+  # System categories (required, do not remove)
+  IGNORED: [] 
+  SPLIT: [] 
+```
+
+### `transaction_mappings.yml`
+
+This file stores rules for automatic categorization based on transaction descriptions. The application populates this file as you categorize transactions and choose to save the mapping.
+
+**Example `transaction_mappings.yml`:**
+```yaml
+mappings:
+  'AMAZON PRIME VIDEO':
+    category: Entertainment
+    subcategory: Streaming Services
+  'TIM HORTONS':
+    category: Dining Out
+    subcategory: Coffee
+```
 
 ---
 

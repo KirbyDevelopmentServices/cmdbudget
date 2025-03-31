@@ -1,0 +1,43 @@
+# AI generated and maintained by Gemini 2.5 Pro
+# This file contains a log of significant changes and refactoring.
+# License: MIT
+
+## 2024-03-31
+**Author:** Gemini 2.5 Pro
+
+**Changes:**
+
+1.  **Project Restructuring:**
+    *   Moved all core Python application code (`.py` files) into a new `cmdbudget/` directory.
+    *   Added an empty `cmdbudget/__init__.py` to make it a package.
+    *   Moved `DIRECTIVE.AI` and `PROMPTS.AI` into a new `ai_files/` directory.
+    *   Updated all internal imports within the `cmdbudget` package to use relative paths (e.g., `from .transaction import Transaction`).
+    *   **Reason:** To improve project organization, adhere to standard Python package structure, and prepare for potential open-sourcing.
+
+2.  **Poetry Script:**
+    *   Added `[tool.poetry.scripts]` section to `pyproject.toml`.
+    *   Defined `cmdbudget = "cmdbudget.main:main"` script entry.
+    *   Corrected package name in `pyproject.toml` from `budgetting` to `cmdbudget`.
+    *   **Reason:** To provide a simple, standard command (`poetry run cmdbudget`) for running the application, abstracting the internal file structure from the user.
+
+3.  **Date Format Standardization:**
+    *   Updated `TransactionOperations._transaction_to_row` to use `"%d/%m/%y"` format for writing dates.
+    *   Ran a one-time script (`update_dates.py`, now deleted) to convert all existing dates in `transactions.csv` to the `dd/mm/yy` format.
+    *   Ensured `Transaction.from_row` and the `parse_date_multi_format` utility correctly handle reading the `dd/mm/yy` format.
+    *   **Reason:** To enforce a consistent date format (`dd/mm/yy`) across the application and stored data, addressing user request.
+
+4.  **Reporting Refinement:**
+    *   Modified `TransactionReporter.format_amount_with_change` to only display the percentage change value if the previous period's amount was non-zero.
+    *   Removed the display of the infinity symbol (∞) when comparing to a zero value.
+    *   **Reason:** To improve the clarity and relevance of the monthly comparison report, avoiding potentially confusing symbols.
+
+5.  **Display Module Refactoring:**
+    *   Created a new `cmdbudget/display.py` module with a `Display` class.
+    *   Centralized all user-facing console output (headers, messages, warnings, errors, menu items, tables, prompts) into static methods within the `Display` class.
+    *   Removed console logging setup from `main.py` (`logging.basicConfig`).
+    *   Replaced user-facing `print`, `input`, and `logger` calls (e.g., `logger.warning`, `logger.info`) across all relevant modules (`main.py`, `cli.py`, `transaction_processor.py`, `transactions_manager.py`, `transaction_reporter.py`, `transactions_editor.py`) with appropriate calls to `Display` methods.
+    *   Kept internal `logger` calls (e.g., `logger.error`, `logger.debug`, `logger.critical`) for potential future file logging or debugging purposes.
+    *   **Reason:** To decouple display logic from core application logic, provide a single point of control for user interface presentation, remove noisy startup logs, and improve code maintainability.
+
+**Test Coverage:**
+*   0% (No automated tests currently implemented).

@@ -7,8 +7,8 @@ import csv
 import logging # Import logging
 from datetime import datetime
 from typing import Dict, List, Optional
-from transaction import Transaction, RawTransaction
-from utils import parse_date_multi_format # Import from utils
+from .transaction import Transaction, RawTransaction
+from .utils import parse_date_multi_format # Import from utils
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
@@ -163,7 +163,7 @@ class TransactionOperations:
                 
         raise ValueError(f"Unable to parse date: {date_str}")
     
-    @staticmethod
-    def check_transaction_exists(transaction: Transaction, existing_transactions: List[Transaction]) -> bool:
-        """Check if a transaction already exists in the list."""
-        return transaction in existing_transactions 
+    # @staticmethod
+    # def check_transaction_exists(transaction: Transaction, existing_transactions: List[Transaction]) -> bool:
+    #     """Check if a transaction already exists in the list."""
+    #     return transaction in existing_transactions 

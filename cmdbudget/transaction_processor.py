@@ -8,10 +8,11 @@ import yaml
 import logging
 from typing import Set, List
 from datetime import datetime
-from transaction import Transaction, RawTransaction
-from transaction_operations import TransactionOperations
+from .transaction import Transaction, RawTransaction
+from .transaction_operations import TransactionOperations
 from pprint import pprint, pformat
-from utils import parse_date_multi_format # Import from utils
+from .utils import parse_date_multi_format # Import from utils
+from .display import Display # Import Display
 
 logging.basicConfig(level=logging.INFO) # Basic config, might be moved to main
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ class TransactionClassifier:
             with open(file_path, 'r', encoding='utf-8') as file: # Specify encoding
                 return yaml.safe_load(file) or {}
         except FileNotFoundError:
-            logger.warning(f"YAML file {file_path} not found. Creating default.") # Use logger
+            Display.warning(f"YAML file {file_path} not found. Creating default.")
             default_content = {}
             if 'mappings' in file_path:
                 default_content = {'mappings': {}}
@@ -57,16 +58,19 @@ class TransactionClassifier:
             try:
                 with open(file_path, 'w', encoding='utf-8') as file:
                     yaml.dump(default_content, file)
-                logger.info(f"Created default YAML file: {file_path}")
+                Display.message(f"Created default YAML file: {file_path}")
             except IOError as e:
                  logger.error(f"Failed to create default YAML file {file_path}: {e}", exc_info=True)
+                 Display.error(f"Failed to create default YAML file: {file_path}")
                  # Depending on severity, might want to raise an exception or exit
             return default_content
         except yaml.YAMLError as e:
              logger.error(f"Error parsing YAML file {file_path}: {e}", exc_info=True)
+             Display.error(f"Error parsing configuration file: {file_path}")
              return {} # Return empty dict on parsing error
         except Exception as e:
             logger.error(f"Unexpected error loading YAML file {file_path}: {e}", exc_info=True)
+            Display.error(f"Unexpected error loading file: {file_path}")
             return {}
 
     def save_mapping(self, description: str, category: str, subcategory: str = None):
@@ -81,8 +85,10 @@ class TransactionClassifier:
             logger.info(f"Saved new mapping for '{description[:30]}...'")
         except IOError as e:
              logger.error(f"Failed to save mappings file {self.mappings_file}: {e}", exc_info=True)
+             Display.error(f"Failed to save mappings file: {self.mappings_file}")
         except Exception as e:
              logger.error(f"Unexpected error saving mappings file {self.mappings_file}: {e}", exc_info=True)
+             Display.error(f"Unexpected error saving mappings: {self.mappings_file}")
 
     def find_category(self, description: str) -> tuple[str, str]:
         """Find category and subcategory for a description or return None, None."""
@@ -95,21 +101,19 @@ class TransactionClassifier:
 
     def prompt_for_category(self, description: str) -> tuple[str, str]:
         """Prompt user to select a category and subcategory."""
-        # This function primarily uses print for user interaction, which is correct
-        # Keep print statements here
-        print(f"\nTransaction: {description}")
+        Display.message(f"\nTransaction: {description}")
 
         while True:
-            print("\nSelect a category:")
+            Display.message("\nSelect a category:")
             display_categories = [cat for cat in self.categories if cat not in ["IGNORED", "SPLIT"]]
             display_categories.sort() # Sort for consistency
 
             for i, category in enumerate(display_categories, 1):
-                print(f"{i}. {category}")
-            print(f"{len(display_categories) + 1}. Add new category")
+                Display.menu_item(i, category)
+            Display.menu_item(len(display_categories) + 1, "Add new category")
 
             try:
-                choice_input = input("\nEnter category number: ")
+                choice_input = Display.prompt("\nEnter category number: ")
                 if not choice_input: continue # Handle empty input
                 choice = int(choice_input)
 
@@ -118,33 +122,33 @@ class TransactionClassifier:
                     # Pass description for context in subcategory handling if needed
                     return self._handle_subcategory_selection(selected_category, description)
                 elif choice == len(display_categories) + 1:
-                    new_category = input("Enter new category name: ").strip()
+                    new_category = Display.prompt("Enter new category name: ").strip()
                     if not new_category:
-                        print("Category name cannot be empty.")
+                        Display.warning("Category name cannot be empty.")
                         continue
                     if new_category in self.categories:
-                        print("Category already exists.")
+                        Display.warning("Category already exists.")
                         continue
                     if new_category in ["IGNORED", "SPLIT"]:
-                         print("Cannot create category with reserved name.")
+                         Display.warning("Cannot create category with reserved name.")
                          continue
 
                     # Add new category and save
                     self.categories.append(new_category)
                     self.subcategories[new_category] = []
                     if self._save_categories():
-                        print(f"Added new category: {new_category}")
+                        Display.message(f"Added new category: {new_category}")
                         return self._handle_subcategory_selection(new_category, description)
                     else:
                          # Failed to save, remove from in-memory lists
                          self.categories.remove(new_category)
                          del self.subcategories[new_category]
-                         print("Error saving new category. Please try again.")
+                         Display.error("Error saving new category. Please try again.")
                          continue # Go back to category selection
                 else:
-                    print("Invalid choice.")
+                    Display.warning("Invalid choice.")
             except ValueError:
-                print("Please enter a valid number.")
+                Display.warning("Please enter a valid number.")
 
     def _handle_subcategory_selection(self, category: str, description: str) -> tuple[str, str]:
         """Handle subcategory selection for a given category."""
@@ -153,17 +157,17 @@ class TransactionClassifier:
             subcategories = self.subcategories.get(category, [])
             subcategories.sort() # Sort for consistency
 
-            print(f"\nSelect a subcategory for {category} (Transaction: {description[:50]}...):")
-            print("0. [No Subcategory]")
+            Display.message(f"\nSelect a subcategory for {category} (Transaction: {description[:50]}...):")
+            Display.menu_item(0, "[No Subcategory]")
             if not subcategories:
-                print("(No existing subcategories)")
+                Display.message("(No existing subcategories)")
             else:
                 for i, subcat in enumerate(subcategories, 1):
-                    print(f"{i}. {subcat}")
-            print(f"{len(subcategories) + 1}. Add new subcategory")
+                    Display.menu_item(i, subcat)
+            Display.menu_item(len(subcategories) + 1, "Add new subcategory")
 
             try:
-                subchoice_input = input("\nEnter subcategory number: ")
+                subchoice_input = Display.prompt("\nEnter subcategory number: ")
                 if not subchoice_input: continue
                 subchoice = int(subchoice_input)
 
@@ -172,12 +176,12 @@ class TransactionClassifier:
                 elif 1 <= subchoice <= len(subcategories):
                     return category, subcategories[subchoice - 1]
                 elif subchoice == len(subcategories) + 1:
-                    new_subcategory = input("Enter new subcategory name: ").strip()
+                    new_subcategory = Display.prompt("Enter new subcategory name: ").strip()
                     if not new_subcategory:
-                        print("Subcategory name cannot be empty.")
+                        Display.warning("Subcategory name cannot be empty.")
                         continue
                     if new_subcategory in subcategories:
-                        print("Subcategory already exists.")
+                        Display.warning("Subcategory already exists.")
                         continue
 
                     # Add new subcategory and save
@@ -186,17 +190,17 @@ class TransactionClassifier:
                     self.subcategories[category].append(new_subcategory)
 
                     if self._save_categories():
-                        print(f"Added new subcategory: {new_subcategory}")
+                        Display.message(f"Added new subcategory: {new_subcategory}")
                         return category, new_subcategory
                     else:
                          # Failed to save, remove from in-memory list
                          self.subcategories[category].remove(new_subcategory)
-                         print("Error saving new subcategory. Please try again.")
+                         Display.error("Error saving new subcategory. Please try again.")
                          continue # Go back to subcategory selection
                 else:
-                    print("Invalid choice.")
+                    Display.warning("Invalid choice.")
             except ValueError:
-                print("Please enter a valid number.")
+                Display.warning("Please enter a valid number.")
 
     def _save_categories(self) -> bool:
          """Saves the current categories and subcategories to the YAML file."""
@@ -207,9 +211,11 @@ class TransactionClassifier:
              return True
          except IOError as e:
              logger.error(f"Failed to save categories file {self.categories_file}: {e}", exc_info=True)
+             Display.error(f"Failed to save categories: {self.categories_file}")
              return False
          except Exception as e:
              logger.error(f"Unexpected error saving categories file {self.categories_file}: {e}", exc_info=True)
+             Display.error(f"Unexpected error saving categories: {self.categories_file}")
              return False
 
 
@@ -233,14 +239,19 @@ class NewTransactionProcessor:
     def process(self) -> bool:
         """Process transactions from new_transactions.csv"""
         if not os.path.exists(self.new_transactions_file):
-            logger.info("No new transactions file found.")
+            Display.message("No new transactions file found.")
             return False
 
         self.existing_transactions = self.load_existing_transactions()
         processed_count = 0
+        skipped_duplicates = 0 # Track skipped duplicates
+        added_count = 0      # Track added transactions
+        transactions_to_save = [] # Collect transactions to save at the end
+
         config = self.classifier.config.get('csv_structure', {})
         if not config:
             logger.error("CSV structure configuration not found in config.yml")
+            Display.error("CSV structure configuration not found. Cannot process new transactions.")
             return False
         default_currency = config.get('default_currency', 'CAD')
 
@@ -273,6 +284,7 @@ class NewTransactionProcessor:
                     # --- Duplicate Check --- 
                     if raw_transaction in self.existing_transactions:
                         logger.info(f"Skipping duplicate transaction from row {line_num}: {raw_transaction.description}")
+                        skipped_duplicates += 1
                         continue
 
                     # --- Categorization --- 
@@ -294,14 +306,14 @@ class NewTransactionProcessor:
                     exact_amount = raw_transaction.amount
                     while choice is None:
                          # Print statements for user interaction are kept here
-                         print(f"\nNew Transaction (Row {line_num}): {raw_transaction.description}")
-                         print(f"Amount: ${exact_amount:.2f} {default_currency}")
+                         Display.message(f"\nNew Transaction (Row {line_num}): {raw_transaction.description}")
+                         Display.message(f"Amount: ${exact_amount:.2f} {default_currency}")
 
-                         print("1. Show full details")
-                         print("2. Categorize")
-                         print("3. Split transaction")
-                         print("4. Ignore")
-                         choice_input = input("\nSelect an option (1-4): ").strip()
+                         Display.message("1. Show full details")
+                         Display.message("2. Categorize")
+                         Display.message("3. Split transaction")
+                         Display.message("4. Ignore")
+                         choice_input = Display.prompt("\nSelect an option (1-4): ").strip()
                          # ... (rest of the user interaction loop remains largely the same, using print)
                          if not choice_input: choice = None; continue
                          try:
@@ -328,14 +340,14 @@ class NewTransactionProcessor:
                                    category, subcategory = "IGNORED", ""
                                    break # Proceed to save as IGNORED
                               else:
-                                   print("Invalid choice.")
+                                   Display.warning("Invalid choice.")
                                    choice = None # Loop back
                          except ValueError:
-                              print("Please enter a valid number.")
+                              Display.warning("Please enter a valid number.")
                               choice = None # Loop back
                          except Exception as e:
                               logger.error(f"Error processing user choice for row {line_num}: {e}", exc_info=True)
-                              print("An error occurred during processing. Skipping this transaction.")
+                              Display.error("An error occurred during processing. Skipping this transaction.")
                               # Decide: skip row (break) or try again (choice=None)? Let's skip.
                               break # Break from inner loop, will skip saving
 
@@ -353,28 +365,44 @@ class NewTransactionProcessor:
                     # Reset choice for next iteration if needed, although break/continue handles flow
                     choice = None 
             
-            logger.info(f"Finished processing. {processed_count} new transactions added.")
-            # Consider moving/archiving the new_transactions.csv file here
-            # e.g., os.rename(self.new_transactions_file, f"{self.new_transactions_file}.processed_{datetime.now().strftime('%Y%m%d%H%M%S')}")
-            return processed_count > 0
+            # Batch save transactions
+            if transactions_to_save:
+                if self.transaction_ops.save_multiple_transactions(transactions_to_save, self.transactions_file):
+                    Display.message(f"\nProcessing Complete:")
+                    Display.message(f"- Added: {added_count} new transactions.")
+                    Display.message(f"- Skipped (duplicates): {skipped_duplicates}")
+                    Display.message(f"- Total rows processed: {processed_count + skipped_duplicates}")
+                    return True
+                else:
+                    Display.error("Error saving processed transactions. Check logs.")
+                    return False
+            else:
+                 Display.message("\nProcessing Complete: No new, non-duplicate transactions found to add.")
+                 return True # Still considered success if no new ones found
 
         except FileNotFoundError:
              logger.error(f"File not found during processing: {self.new_transactions_file}")
+             Display.error(f"New transactions file not found: {self.new_transactions_file}")
              return False
+        except IOError as e:
+            logger.error(f"I/O error processing {self.new_transactions_file}: {e}", exc_info=True)
+            Display.error(f"Error reading new transactions file: {e}")
+            return False
         except Exception as e:
             logger.error(f"An unexpected error occurred during CSV processing loop: {e}", exc_info=True)
+            Display.error(f"An unexpected error occurred during processing. Check logs.")
             return False
 
     def _display_transaction_details(self, details: dict, config: dict):
         """Display transaction details. Keeps print for direct output."""
-        print("\n=== Transaction Details ===")
+        Display.message("\n=== Transaction Details ===")
         # Use the provided details dictionary
         cleaned_row = {
             field: value for field, value in details.items()
             if value and value != "" and field != "None"
         }
         pprint(cleaned_row, indent=2)
-        print("========================\n")
+        Display.message("========================\n")
 
 
     def _handle_split_transaction(self, raw_transaction: RawTransaction, exact_amount: float, default_currency: str):
@@ -389,7 +417,7 @@ class NewTransactionProcessor:
         )
         if not self.transaction_ops.save_transaction(split_marker_transaction, self.transactions_file):
              logger.error(f"Failed to save SPLIT marker for: {raw_transaction.description}. Aborting split.")
-             print("Error saving initial split record. Cannot proceed with splitting.")
+             Display.error("Error saving initial split record. Cannot proceed with splitting.")
              return # Abort splitting
         else:
              logger.info(f"Marked original transaction as SPLIT: {raw_transaction.description}")
@@ -400,31 +428,31 @@ class NewTransactionProcessor:
 
         while remaining_amount > 0.009:
             # Print statements for user interaction are kept
-            print(f"\nRemaining amount to split: ${remaining_amount:.2f} {default_currency}")
-            split_choice = input("Add another split? (y/n): ").lower().strip()
+            Display.message(f"\nRemaining amount to split: ${remaining_amount:.2f} {default_currency}")
+            split_choice = Display.prompt("Add another split? (y/n): ").lower().strip()
             if split_choice != 'y':
                 if remaining_amount > 0.009:
-                    print(f"Warning: ${remaining_amount:.2f} will remain categorized as SPLIT.")
+                    Display.warning(f"${remaining_amount:.2f} will remain categorized as SPLIT.")
                 break
             
             split_amount = None
             while split_amount is None:
                  # ... (Input logic for split_amount using print)
                  try:
-                    split_amount_input = input("Enter split amount: $").strip()
+                    split_amount_input = Display.prompt("Enter split amount: $").strip()
                     if not split_amount_input: continue
                     split_amount_val = float(split_amount_input)
 
                     if split_amount_val <= 0.009:
-                        print("Amount must be positive.")
+                        Display.warning("Amount must be positive.")
                     elif split_amount_val > remaining_amount + 0.001:
-                        print(f"Amount cannot exceed remaining amount (${remaining_amount:.2f})")
+                        Display.warning(f"Amount cannot exceed remaining amount (${remaining_amount:.2f})")
                     else:
                          split_amount = split_amount_val # Assign valid amount
                  except ValueError:
-                    print("Please enter a valid number.")
+                    Display.warning("Please enter a valid number.")
 
-            split_description = input(f"Enter description for this ${split_amount:.2f} split [Split: {raw_transaction.description[:30]}...]: ").strip()
+            split_description = Display.prompt(f"Enter description for this ${split_amount:.2f} split [Split: {raw_transaction.description[:30]}...]: ").strip()
             if not split_description:
                 split_description = f"Split: {raw_transaction.description}"
 
@@ -445,7 +473,7 @@ class NewTransactionProcessor:
                 splits_added += 1
             else:
                  logger.error(f"Failed to save split transaction part: {split_description}. Stopping split.")
-                 print("Error saving split part. Aborting further splits for this transaction.")
+                 Display.error("Error saving split part. Aborting further splits for this transaction.")
                  break
         
         if splits_added > 0:
@@ -461,7 +489,7 @@ class NewTransactionProcessor:
             category, subcategory = self.classifier.prompt_for_category(raw_transaction.description)
             if category not in ["IGNORED", "SPLIT"]:
                 # Keep print for user confirmation
-                save_mapping = input("Save this mapping for future transactions? (y/n): ").lower().strip()
+                save_mapping = Display.prompt("Save this mapping for future transactions? (y/n): ").lower().strip()
                 if save_mapping == 'y':
                     self.classifier.save_mapping(raw_transaction.description, category, subcategory)
         return category, subcategory

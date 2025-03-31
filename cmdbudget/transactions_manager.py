@@ -7,14 +7,15 @@ import os
 from datetime import datetime, date
 from collections import defaultdict
 from typing import List, Dict, Tuple
-from transaction import Transaction
-from transaction_processor import NewTransactionProcessor, TransactionClassifier
-from transaction_reporter import TransactionReporter
-from transaction_operations import TransactionOperations
+from .transaction import Transaction
+from .transaction_processor import NewTransactionProcessor, TransactionClassifier
+from .transaction_reporter import TransactionReporter
+from .transaction_operations import TransactionOperations
 import yaml
-from transactions_editor import TransactionEditor
-from user_input import prompt_for_date, prompt_for_description, prompt_for_amount, prompt_for_currency
-from utils import parse_date_multi_format
+from .transactions_editor import TransactionEditor
+from .user_input import prompt_for_date, prompt_for_description, prompt_for_amount, prompt_for_currency
+from .utils import parse_date_multi_format
+from .display import Display
 import logging
 
 # Get a logger for this module
@@ -45,9 +46,11 @@ class TransactionsManager:
                 return list(reader)
         except FileNotFoundError:
             logger.error(f"The file '{self.transactions_file}' was not found.")
+            Display.error(f"Transaction file not found: {self.transactions_file}")
             return None
         except Exception as e:
             logger.error(f"Error reading file '{self.transactions_file}': {e}", exc_info=True)
+            Display.error(f"Error reading transaction file: {e}")
             return None
 
     def initialize_data(self):
@@ -141,7 +144,7 @@ class TransactionsManager:
 
     def add_custom_transaction(self):
         """Add a custom transaction manually entered by the user."""
-        print("\n=== Add Custom Transaction ===")
+        Display.header("Add Custom Transaction", level=2)
 
         # Get transaction details using imported functions
         transaction_date = prompt_for_date()
@@ -153,10 +156,10 @@ class TransactionsManager:
         category, subcategory = self.classifier.find_category(description)
 
         if category:
-            print(f"\nFound existing mapping for this description:")
-            print(f"Category: {category}")
-            print(f"Subcategory: {subcategory if subcategory else 'None'}")
-            use_mapping = input("Use this mapping? (y/n): ").lower().strip()
+            Display.message(f"\nFound existing mapping for this description:")
+            Display.message(f"Category: {category}")
+            Display.message(f"Subcategory: {subcategory if subcategory else 'None'}")
+            use_mapping = Display.prompt("Use this mapping? (y/n): ").lower().strip()
 
             if use_mapping != 'y':
                 # User doesn't want to use existing mapping, prompt for new categorization
@@ -179,12 +182,12 @@ class TransactionsManager:
 
         # Save the transaction to CSV
         if self.transaction_ops.save_transaction(transaction, self.transactions_file):
-             print(f"\nTransaction added successfully: {description} (${amount:.2f} {currency})")
+             Display.message(f"\nTransaction added successfully: {description} (${amount:.2f} {currency})")
              # Reinitialize data to include the new transaction
              self.initialize_data()
              return True
         else:
-            print("\nError adding transaction. Check logs for details.")
+            Display.error("Error adding transaction. Check logs for details.")
             return False
 
     def _append_transaction_to_file(self, transaction):

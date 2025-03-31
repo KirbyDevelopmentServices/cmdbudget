@@ -7,6 +7,10 @@ from collections import defaultdict
 from typing import Dict, List, Tuple
 from tabulate import tabulate
 import locale
+from .display import Display # Import Display
+
+# Import Transaction if needed for type hints, assuming it's defined elsewhere
+# from .transaction import Transaction 
 
 # Set locale for proper currency formatting
 locale.setlocale(locale.LC_ALL, '')
@@ -73,10 +77,9 @@ class TransactionReporter:
         month_name = datetime(year, month, 1).strftime('%B %Y')
         prev_month_name = datetime(prev_year, prev_month, 1).strftime('%B %Y')
         
-        print("\n" + "="*70)
-        print(f"📊 Spending Report for {month_name}".center(70))
-        print(f"(compared to {prev_month_name})".center(70))
-        print("="*70 + "\n")
+        # Use Display.header
+        Display.header(f"📊 Spending Report for {month_name}")
+        Display.message(f"(compared to {prev_month_name})".center(70)) # Keep centered message
 
         # Prepare data for tabulation
         table_data = []
@@ -164,20 +167,18 @@ class TransactionReporter:
             format_amount_with_change(totals["USD"], prev_totals["USD"])
         ])
 
-        # Print the table
-        print(tabulate(
+        # Use Display.table instead of print(tabulate(...))
+        Display.table(
             table_data,
             headers=["\033[1mCategory\033[0m", "\033[1mCAD\033[0m", "\033[1mUSD\033[0m"],
             tablefmt="pretty",
             colalign=("left", "right", "right")
-        ))
-        print("\n")
+        )
 
     def display_category_data(self, category: str):
         """Display spending for a specific category across all months."""
-        print("\n" + "="*60)
-        print(f"📈 Spending History for {category}".center(60))
-        print("="*60 + "\n")
+        # Use Display.header
+        Display.header(f"📈 Spending History for {category}", level=2)
 
         table_data = []
         yearly_totals = defaultdict(lambda: defaultdict(float))
@@ -213,20 +214,18 @@ class TransactionReporter:
                 ]
                 table_data.append(row)
 
-        # Print the table
-        print(tabulate(
+        # Use Display.table
+        Display.table(
             table_data,
             headers=["Month", "CAD", "USD"],
             tablefmt="pretty",
             colalign=("left", "right", "right")
-        ))
-        print("\n")
+        )
 
     def display_tag_data(self, tag: str):
         """Display spending for a specific tag across all months."""
-        print("\n" + "="*60)
-        print(f"🏷️  Spending History for Tag: {tag}".center(60))
-        print("="*60 + "\n")
+        # Use Display.header
+        Display.header(f"🏷️ Spending History for Tag: {tag}", level=2)
 
         table_data = []
         yearly_totals = defaultdict(lambda: defaultdict(float))
@@ -279,16 +278,16 @@ class TransactionReporter:
                 ]
                 table_data.append(row)
 
+        # Use Display.table or Display.message if no data
         if table_data:
-            print(tabulate(
+            Display.table(
                 table_data,
                 headers=["Month/Category", "CAD", "USD"],
                 tablefmt="pretty",
                 colalign=("left", "right", "right")
-            ))
+            )
         else:
-            print("No transactions found with this tag.")
-        print("\n")
+            Display.message("No transactions found with this tag.")
 
     @staticmethod
     def _format_currency(amount: float, currency: str) -> str:

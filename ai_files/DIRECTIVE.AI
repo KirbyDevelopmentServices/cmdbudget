@@ -1,5 +1,7 @@
 # cmdbudget Project Analysis for the Assisting AI
 
+<!-- AI generated and maintained by Gemini 2.5 Pro -->
+
 ## Self-Identification
 
 You are an AI trained specifically for this project, cmdbudget.
@@ -68,16 +70,20 @@ cmdbudget is a terminal-based financial tracking tool designed to work with CSV 
 
 ## Architecture
 
-The application follows a modular architecture with clear separation of concerns:
+The application follows a modular architecture within the `cmdbudget` package:
 
-1. **Data Models** (`transaction.py`): Defines the structure of transaction data (`BaseTransaction`, `RawTransaction`, `Transaction`).
-2. **Processing** (`transaction_processor.py`): Handles importing (`NewTransactionProcessor`) and categorization logic (`TransactionClassifier`).
-3. **Management** (`transactions_manager.py`): Orchestrates overall application flow, connecting UI actions to backend logic.
-4. **Editing** (`transactions_editor.py`): Provides logic for modifying existing transactions.
-5. **Reporting** (`transaction_reporter.py`): Generates formatted reports for the terminal.
-6. **User Interface** (`cli.py`): Implements the command-line menus and user interaction prompts.
-7. **Application Entry** (`main.py`): Initializes the application and handles startup configuration checks.
-8. **Operations Utility** (`transaction_operations.py`): Provides low-level, reusable functions for basic transaction CRUD operations (Create, Read, Update, Delete - though Delete isn't fully implemented yet) and utility functions like date parsing, acting as a simple data access layer for the CSV files.
+1.  **Data Models** (`cmdbudget/transaction.py`): Defines `BaseTransaction`, `RawTransaction`, `Transaction`.
+2.  **Processing** (`cmdbudget/transaction_processor.py`): Handles CSV import (`NewTransactionProcessor`) and categorization logic (`TransactionClassifier`).
+3.  **Management** (`cmdbudget/transactions_manager.py`): Orchestrates application flow.
+4.  **Editing** (`cmdbudget/transactions_editor.py`): Logic for modifying transactions.
+5.  **Reporting** (`cmdbudget/transaction_reporter.py`): Generates formatted terminal reports.
+6.  **User Interface** (`cmdbudget/cli.py`): Implements command-line menus and user interaction.
+7.  **Display Logic** (`cmdbudget/display.py`): Centralizes formatting and output of user-facing text, tables, and prompts.
+8.  **Application Entry** (`cmdbudget/main.py`): Initializes the application, loads config, manages main loop.
+9.  **Operations Utility** (`cmdbudget/transaction_operations.py`): Low-level CSV read/write functions for transactions.
+10. **General Utilities** (`cmdbudget/utils.py`): Contains shared utility functions (e.g., `parse_date_multi_format`).
+
+The application is launched via a Poetry script (`poetry run cmdbudget`) defined in `pyproject.toml`, which calls the `main` function in `cmdbudget/main.py`.
 
 ## Key Implementation Details
 
@@ -101,14 +107,15 @@ The application follows a modular architecture with clear separation of concerns
 - Rules are stored in YAML for persistence
 
 ### Storage
-- Transactions are stored in CSV format (`transactions.csv`)
-- Configuration stored in YAML files:
-  - `config.yml`: Column mapping configuration
-  - `categories.yml`: Category definitions
-  - `transaction_mappings.yml`: Categorization rules
+- Transactions are stored in CSV format (`transactions.csv` in the root directory).
+- Configuration stored in YAML files in the root directory:
+  - `config.yml`: Column mapping, default currency, path configurations.
+  - `categories.yml`: Category definitions.
+  - `transaction_mappings.yml`: Categorization rules.
+- AI-related files (`DIRECTIVE.AI`, `PROMPTS.AI`, `CHANGELOG.AI`) are stored in `ai_files/`.
 
 ### Report Types
-1. Monthly reports with comparison to previous period
+1. Monthly reports with comparison to previous period (percentage change shown only if previous period > 0).
 2. Category history analysis across all months
 3. Tag-based reporting with category breakdowns
 4. Multi-currency support (primarily CAD/USD)
@@ -119,17 +126,17 @@ The application follows a modular architecture with clear separation of concerns
 2. **Factory Method Pattern**: Implicitly used via `Transaction.from_row`, `Transaction.from_raw` for creating transaction objects from different data sources.
 3. **Command Pattern**: Reflected in the `cli.py` menu structure where user selections trigger specific actions/commands.
 4. **Strategy Pattern**: Applicable to the different reporting methods within `TransactionReporter`.
-5. **Repository Pattern**: A simplified version is implemented via `TransactionOperations`, which abstracts the details of reading/writing transactions to/from the CSV file.
+5. **Repository Pattern**: A simplified version is implemented via `TransactionOperations`, abstracting CSV I/O.
+6. **Facade Pattern**: The `Display` class acts as a Facade for console output, simplifying interactions with `print`, `input`, and `tabulate` for the rest of the application.
 
 ## Configuration
 
 The system uses three main configuration files:
-1. `config.yml`: Contains:
-    - `csv_structure`: CSV column mappings and default currency.
-    - `storage`: Configuration related to data storage, including:
-        - `transaction_file_path`: The path (relative or absolute) to the main transaction CSV file (defaults to `transactions.csv`).
-2. `categories.yml`: Category and subcategory definitions
-3. `transaction_mappings.yml`: Rules for automatic categorization
+1. `config.yml` (root dir): Contains:
+    - `csv_structure`: CSV column mappings, default currency, `expenses_are_positive` flag.
+    - `storage`: Paths for `transaction_file_path` and `new_transaction_file_path` (default to root dir).
+2. `categories.yml` (root dir): Category and subcategory definitions.
+3. `transaction_mappings.yml` (root dir): Rules for automatic categorization.
 
 These are created with sensible defaults on first run if not present.
 
@@ -219,27 +226,33 @@ These are created with sensible defaults on first run if not present.
    - Reports show CAD and USD columns separately
    - Prevents misleading aggregation of different currencies
 
+6. **User Interface Consistency:**
+    - **Challenge:** Ensuring consistent formatting and presentation of messages, menus, prompts, and tables throughout the CLI.
+    - **Solution:** Introduced the `Display` module (`cmdbudget/display.py`) to centralize all user-facing output logic. All `print` and `input` calls related to user interaction were refactored to use static methods from the `Display` class (e.g., `Display.message`, `Display.prompt`, `Display.table`). Removed console logging setup to avoid noisy startup messages.
+
 ## Coding Conventions
 
 1. **Type Annotations**: Use comprehensively for all function signatures and variables where practical.
 2. **Docstrings**: Provide clear, concise docstrings for all classes and public methods explaining their purpose, arguments, and return values.
 3. **Error Handling**: Implement robust error handling, especially for file I/O, data parsing (CSV, YAML), and user input validation.
-4. **Logging**: Utilize the `logging` module for informative messages (INFO, DEBUG, ERROR) instead of excessive `print` statements for internal operations.
+4. **Logging**: Utilize the `logging` module *only* for internal debugging or error information not intended for direct user view (e.g., detailed stack traces, internal state). User feedback (warnings, errors, status messages) should use the `Display` module.
 5. **Modularity & DRY (Don't Repeat Yourself)**: *Actively refactor* to ensure high cohesion within modules and low coupling between them. Strive to eliminate code duplication by creating reusable functions or classes (e.g., use `TransactionOperations` consistently, consolidate prompting logic).
 6. **Clarity over Brevity**: Write clear, readable code. Use meaningful variable and function names.
-7. **User Interaction**: Design CLI prompts and menus to be clear, intuitive, and provide helpful feedback, especially on errors or invalid input.
+7. **User Interaction**: All user interaction (prompts, menus, messages, tables) **must** be channeled through the `cmdbudget/display.py` module.
+8. **Package Structure**: Maintain the established package structure within `cmdbudget/` and use relative imports for intra-package dependencies.
 
 ## Special Coding Notes
 
 1. **Separation of Concerns:** Strictly adhere to the established modular architecture. UI logic belongs in `cli.py`, core processing in `transaction_processor.py`, data management orchestration in `transactions_manager.py`, low-level data access in `transaction_operations.py`, etc.
 2. **Hashing:** The `BaseTransaction` hash/equality implementation is crucial for duplicate detection.
 3. **CLI Menus:** Maintain the consistent menu-based interaction pattern in `cli.py`.
-4. **Report Formatting:** Use `tabulate` and ANSI escape codes as done in `TransactionReporter` for consistent report styling.
-5. **Date Parsing:** Always use `TransactionOperations.parse_date_multi_format` for consistent handling of various date formats.
+4. **Report Formatting:** Use `tabulate` *only* within the `Display.table` method for consistent report styling.
+5. **Date Parsing:** Always use `utils.parse_date_multi_format` for consistent handling of various date formats.
 6. **Amount Storage:** Transaction amounts are converted to floats during processing but should be handled carefully to maintain precision (currently stored as string in CSV after initial processing).
 7. **Immutability:** Consider transaction objects (like `Transaction`) as largely immutable after creation. Updates should ideally create new instances (as done in `TransactionEditor._update_transaction`).
-8. **Configuration Loading:** Use the `TransactionClassifier.load_yaml` method for robust loading of YAML configuration files.
+8. **Configuration Loading:** Use the `TransactionClassifier.load_yaml` method for robust loading of YAML configuration files. Defaults are created if files are missing.
 9. **System Categories:** Remember that `IGNORED` and `SPLIT` categories have special system meaning and should be handled appropriately (e.g., filtered from user selection menus and standard reports).
+10. **Display Module:** All direct user output (`print`) and input (`input`) should be replaced by calls to the appropriate `Display` class methods (`Display.message`, `Display.prompt`, `Display.table`, etc.).
 
 ## Current Development Focus / Refactoring Goals
 

@@ -5,8 +5,9 @@
 import csv
 from typing import Dict, List
 from datetime import datetime
-from transaction import Transaction
-from transaction_operations import TransactionOperations
+from .transaction import Transaction
+from .transaction_operations import TransactionOperations
+from .display import Display
 
 class TransactionEditor:
     def __init__(self, transactions_file: str, classifier):
@@ -24,24 +25,25 @@ class TransactionEditor:
                 t.description == transaction.description and 
                 t.amount == transaction.amount):
                 
-                # Show edit options
-                print("\nEdit Transaction:")
-                print("1. Edit category/subcategory")
-                print("2. Add/edit tag")
-                print("3. Add/edit merchant")
-                print("4. Split transaction")
-                print("5. Cancel")
+                # Show edit options using Display
+                Display.message("\nEdit Transaction:")
+                Display.menu_item(1, "Edit category/subcategory")
+                Display.menu_item(2, "Add/edit tag")
+                Display.menu_item(3, "Add/edit merchant")
+                Display.menu_item(4, "Split transaction")
+                Display.menu_item(5, "Cancel")
 
                 try:
-                    choice = int(input("\nSelect an option (1-5): "))
+                    choice_str = Display.prompt("\nSelect an option (1-5): ")
+                    choice = int(choice_str)
                     if choice == 1:
                         category, subcategory = self.classifier.prompt_for_category(t.description)
                         transactions[idx] = self._update_transaction(t, category=category, subcategory=subcategory)
                     elif choice == 2:
-                        tag = input("Enter tag: ").strip()
+                        tag = Display.prompt("Enter tag: ").strip()
                         transactions[idx] = self._update_transaction(t, tag=tag)
                     elif choice == 3:
-                        merchant = input("Enter merchant: ").strip()
+                        merchant = Display.prompt("Enter merchant: ").strip()
                         transactions[idx] = self._update_transaction(t, merchant=merchant)
                     elif choice == 4:
                         # Handle splitting existing transaction
@@ -51,7 +53,7 @@ class TransactionEditor:
                     elif choice == 5:
                         return False
                     else:
-                        print("Invalid choice")
+                        Display.warning("Invalid choice")
                         return False
 
                     # Save all transactions back to file
@@ -59,10 +61,10 @@ class TransactionEditor:
                     return True
 
                 except ValueError:
-                    print("Please enter a valid number")
+                    Display.warning("Please enter a valid number")
                     return False
 
-        print("Transaction not found")
+        Display.message("Transaction not found")
         return False
 
     def _update_transaction(self, transaction: Transaction, **kwargs) -> Transaction:
@@ -93,27 +95,28 @@ class TransactionEditor:
         
         remaining_amount = transaction.amount
         while remaining_amount > 0:
-            print(f"\nRemaining amount to split: ${remaining_amount:.2f}")
-            split_choice = input("Would you like to add another split? (y/n): ").lower()
+            Display.message(f"\nRemaining amount to split: ${remaining_amount:.2f}")
+            split_choice = Display.prompt("Would you like to add another split? (y/n): ").lower()
             
             if split_choice != 'y':
                 if remaining_amount > 0:
-                    print(f"Warning: ${remaining_amount:.2f} of the transaction will be unaccounted for.")
+                    Display.warning(f"Warning: ${remaining_amount:.2f} of the transaction will be unaccounted for.")
                 break
             
             while True:
                 try:
-                    split_amount = float(input("Enter split amount: $"))
+                    split_amount_str = Display.prompt("Enter split amount: $")
+                    split_amount = float(split_amount_str)
                     if split_amount <= 0:
-                        print("Amount must be positive.")
+                        Display.warning("Amount must be positive.")
                     elif split_amount > remaining_amount:
-                        print(f"Amount cannot exceed remaining amount (${remaining_amount:.2f})")
+                        Display.warning(f"Amount cannot exceed remaining amount (${remaining_amount:.2f})")
                     else:
                         break
                 except ValueError:
-                    print("Please enter a valid number.")
+                    Display.warning("Please enter a valid number.")
             
-            split_description = input("Enter description for this split: ")
+            split_description = Display.prompt("Enter description for this split: ")
             category, subcategory = self.classifier.prompt_for_category(split_description)
             
             # Create split transaction
@@ -141,7 +144,7 @@ class TransactionEditor:
                 for row in reader:
                     transactions.append(Transaction.from_row(row, TransactionOperations.parse_date_multi_format))
         except FileNotFoundError:
-            print(f"No transactions file found at {self.transactions_file}")
+            Display.warning(f"No transactions file found at {self.transactions_file}")
         return transactions
 
     def _save_transactions(self, transactions: List[Transaction]):

@@ -4,13 +4,24 @@
 
 import os
 import csv
+import logging # Import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional
 from transaction import Transaction, RawTransaction
+from utils import parse_date_multi_format # Import from utils
+
+# Get a logger for this module
+logger = logging.getLogger(__name__)
+
+# Define standard CSV fieldnames once
+CSV_FIELDNAMES = [
+    "Transaction Date", "Description", "Amount", "Currency",
+    "Category", "Subcategory", "Tag", "Merchant"
+]
 
 class TransactionOperations:
-    """Provides a unified API for transaction CRUD operations."""
-    
+    """Provides a unified API for transaction CRUD operations against a CSV file."""
+
     @staticmethod
     def create_transaction(
         date: datetime,
@@ -23,76 +34,116 @@ class TransactionOperations:
         merchant: str = ""
     ) -> Transaction:
         """Create a new Transaction object with the given attributes."""
+        # Basic validation can be added here if desired
+        if not isinstance(date, datetime):
+             # Handle cases where date might not be datetime object yet
+             # This shouldn't happen if called correctly, but defensive check
+             logger.warning(f"create_transaction received non-datetime object for date: {type(date)}")
+             # Attempt to parse if it looks like a string? Or raise error?
+             # For now, let it proceed, but Transaction init might fail
+             pass
         return Transaction(
             _date=date,
             _description=description,
-            _amount=float(amount),
+            _amount=float(amount), # Ensure amount is float
             currency=currency,
             category=category,
             subcategory=subcategory,
             tag=tag,
             merchant=merchant
         )
-    
+
     @staticmethod
     def save_transaction(transaction: Transaction, file_path: str) -> bool:
-        """Save a transaction to the specified file."""
-        transaction_row = TransactionOperations.transaction_to_row(transaction)
-        return TransactionOperations.append_transaction_to_file(transaction_row, file_path)
-    
+        """Save a transaction to the specified file. Returns True on success, False otherwise."""
+        try:
+            transaction_row = TransactionOperations._transaction_to_row(transaction)
+            return TransactionOperations._append_transaction_to_file(transaction_row, file_path)
+        except Exception as e:
+            logger.error(f"Error during save_transaction for '{transaction.description}': {e}", exc_info=True)
+            return False
+
     @staticmethod
-    def transaction_to_row(transaction: Transaction) -> Dict[str, str]:
+    def _transaction_to_row(transaction: Transaction) -> Dict[str, str]: # Make private
         """Convert a Transaction object to a row dictionary for CSV storage."""
+        # Use the specified dd/mm/yy format for writing
+        date_format = "%d/%m/%y"
         return {
-            "Transaction Date": transaction.date.strftime("%m/%d/%y"),
+            "Transaction Date": transaction.date.strftime(date_format),
             "Description": transaction.description,
-            "Amount": str(transaction.amount),
+            # Store amount with 2 decimal places consistently (positive=expense)
+            "Amount": f"{transaction.amount:.2f}",
             "Currency": transaction.currency,
             "Category": transaction.category,
             "Subcategory": transaction.subcategory,
             "Tag": transaction.tag,
             "Merchant": transaction.merchant
         }
-    
+
     @staticmethod
-    def append_transaction_to_file(transaction_row: Dict[str, str], file_path: str) -> bool:
+    def _append_transaction_to_file(transaction_row: Dict[str, str], file_path: str) -> bool: # Make private
         """Append a transaction row to a CSV file."""
         try:
+            # Check if file exists and is empty to write header
             file_exists = os.path.exists(file_path)
-            
-            with open(file_path, 'a', newline='') as file:
-                fieldnames = [
-                    "Transaction Date", "Description", "Amount", "Currency",
-                    "Category", "Subcategory", "Tag", "Merchant"
-                ]
-                writer = csv.DictWriter(file, fieldnames=fieldnames)
-                
-                if not file_exists:
+            write_header = not file_exists or os.path.getsize(file_path) == 0
+
+            with open(file_path, 'a', newline='', encoding='utf-8') as file: # Specify encoding
+                writer = csv.DictWriter(file, fieldnames=CSV_FIELDNAMES)
+
+                if write_header:
                     writer.writeheader()
-                    
+
                 writer.writerow(transaction_row)
             return True
-        except Exception as e:
-            print(f"Error saving transaction: {e}")
+        except IOError as e:
+            logger.error(f"I/O Error appending transaction to {file_path}: {e}", exc_info=True)
             return False
-    
+        except Exception as e:
+            logger.error(f"Unexpected error appending transaction to {file_path}: {e}", exc_info=True)
+            return False
+
     @staticmethod
-    def read_transactions(file_path: str, date_parser) -> List[Transaction]:
-        """Read all transactions from a CSV file."""
+    def read_transactions(file_path: str) -> List[Transaction]:
+        """Read all transactions from a CSV file. Returns list of Transactions or empty list on error."""
         transactions = []
         try:
             if not os.path.exists(file_path):
+                logger.info(f"Transaction file {file_path} not found, returning empty list.")
                 return []
-                
-            with open(file_path, 'r') as file:
+
+            with open(file_path, 'r', encoding='utf-8') as file: # Specify encoding
                 reader = csv.DictReader(file)
+                # Check header consistency
+                if set(reader.fieldnames) != set(CSV_FIELDNAMES):
+                     logger.warning(f"CSV header mismatch in {file_path}. Expected: {CSV_FIELDNAMES}, Found: {reader.fieldnames}")
+                     # Attempt to proceed, but Transaction.from_row might fail if columns missing.
+
+                line_num = 1 # For error reporting (header is line 1)
                 for row in reader:
-                    transactions.append(Transaction.from_row(row, date_parser))
+                    line_num += 1
+                    try:
+                        # Ensure all required keys are present before parsing
+                        if not all(key in row for key in CSV_FIELDNAMES):
+                             logger.error(f"Missing one or more required columns in row {line_num} of {file_path}. Skipping row: {row}")
+                             continue
+                        transactions.append(Transaction.from_row(row, parse_date_multi_format))
+                    except ValueError as e:
+                        logger.error(f"Error parsing transaction from row {line_num} in {file_path}: {e} - Row: {row}")
+                    except Exception as e:
+                         logger.error(f"Unexpected error processing row {line_num} in {file_path}: {e} - Row: {row}", exc_info=True)
+
             return transactions
-        except Exception as e:
-            print(f"Error reading transactions: {e}")
+        except IOError as e:
+            logger.error(f"I/O Error reading transactions from {file_path}: {e}", exc_info=True)
             return []
-    
+        except Exception as e:
+            logger.error(f"Unexpected error reading transactions from {file_path}: {e}", exc_info=True)
+            return []
+
+    # Removed parse_date_multi_format - moved to utils.py
+    # Removed check_transaction_exists - responsibility lies higher up
+
     @staticmethod
     def parse_date_multi_format(date_str: str) -> datetime:
         """Parse date string in multiple formats."""

@@ -90,14 +90,17 @@ class TransactionReporter:
             
             amount_str = f"${current:,.2f}"
             
-            if previous == 0:
-                pct_str = " (\033[2m∞\033[0m)" if current > 0 else ""
-            else:
+            # Only calculate and display percentage change if previous > 0
+            if previous > 0:
                 pct_change = ((current - previous) / previous) * 100
-                sign = "+" if pct_change > 0 else ""
+                sign = "+" if pct_change >= 0 else "" # Show + for 0% change too
                 pct_str = f" (\033[2m{sign}{pct_change:.1f}%\033[0m)"
-            
-            return amount_str + pct_str
+                return amount_str + pct_str
+            # If previous is 0 and current is not 0, just show the amount
+            elif current != 0: 
+                 return amount_str
+            else: # Should not happen given the first check, but included for completeness
+                 return amount_str
 
         # Get all categories from both months
         all_categories = set(current_grouped.keys()) | set(prev_grouped.keys())

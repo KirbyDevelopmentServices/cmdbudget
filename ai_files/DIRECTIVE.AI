@@ -131,22 +131,32 @@ The application is launched via a Poetry script (`poetry run cmdbudget`) defined
 
 ## Configuration
 
-The system uses three main configuration files:
-1. `config.yml` (root dir): Contains:
-    - `csv_structure`: CSV column mappings, default currency, `expenses_are_positive` flag.
-    - `storage`: Paths for `transaction_file_path` and `new_transaction_file_path` (default to root dir).
-2. `categories.yml` (root dir): Category and subcategory definitions.
-3. `transaction_mappings.yml` (root dir): Rules for automatic categorization.
+The system uses three main configuration files in the project root:
+1. `config.yml`: Defines CSV import structure and storage paths. See details below.
+2. `categories.yml`: User-defined category/subcategory structure.
+3. `transaction_mappings.yml`: Stores learned rules for automatic categorization.
 
-These are created with sensible defaults on first run if not present.
+**`config.yml` Details:**
+*   **`import_csv_structure` (Required):** This section defines how to read the input CSV.
+    *   `date_column` (Required): String name of the date column.
+    *   `description_column` (Required): String name of the description column, OR a list of string column names to be joined with spaces.
+    *   `amount_column` (Required): String name of the primary amount column (used for the default currency).
+    *   `default_currency` (Optional): String currency code (e.g., 'CAD', 'USD'). Defaults to 'CAD'.
+    *   `expenses_are_positive` (Optional): Boolean (`true`/`false`). `true` if expenses are positive numbers in the CSV, `false` if negative. Defaults to `true`.
+*   **`storage` (Optional):** This section defines file paths.
+    *   `transaction_file_path` (Optional): Path to the main transaction data file. Defaults to `transactions.csv`.
+    *   `new_transaction_file_path` (Optional): Path to the input CSV for importing. Defaults to `new_transactions.csv`.
+
+If `config.yml` is missing, a default version containing only the `storage` section (with default paths) is created. The application will then exit, prompting the user to add the required `import_csv_structure` section.
 
 ## Current Implemented Features
 
 ### Transaction Importing
-- CSV import with configurable column mappings
+- CSV import with configurable column mappings (via `import_csv_structure`)
+- **Multi-column description support** (description derived from a list of columns in `config.yml`)
 - Default currency configuration
-- Duplicate detection
-- Multiple date format support
+- Duplicate detection (based on date, description, amount)
+- Multiple date format support for input CSVs
 
 ### Transaction Management
 - View transactions by month
@@ -164,7 +174,7 @@ These are created with sensible defaults on first run if not present.
 - Monthly spending reports with previous period comparison
 - Category history analysis
 - Tag analysis with categorization breakdowns
-- Multi-currency support
+- Multi-currency support (basic display in reports)
 
 ## Planned Improvements (from ROADMAP.md)
 
@@ -172,6 +182,7 @@ These are created with sensible defaults on first run if not present.
 - Support for more date formats
 - Bulk import from multiple files
 - Better error handling for malformed CSVs
+- **Proper multi-currency amount handling during import (currently defaults to 0.0 if primary amount column is empty)**
 
 ### Transaction Management
 - Merge similar transactions
@@ -205,9 +216,9 @@ These are created with sensible defaults on first run if not present.
 
 ## Implementation Challenges & Solutions
 
-1. **Duplicate Detection**
-   - Implemented using transaction hashing based on date, description, and amount
-   - Ensures same transaction from multiple imports isn't duplicated
+1. **Duplicate Detection (Date Parsing Issue)**
+   - **Challenge:** Duplicates were missed because the flexible date parser interpreted stored dates (`dd/mm/yy`) differently than input dates (`mm/dd/yyyy`).
+   - **Solution:** Implemented a specific date parser (`strptime` with `"%d/%m/%y"`) within `TransactionOperations.read_transactions` used *only* for reading the stored `transactions.csv`. The flexible parser (`utils.parse_date_multi_format`) is still used for parsing the input CSV.
 
 2. **Transaction Splitting**
    - Special SPLIT category marks original transaction
@@ -216,15 +227,16 @@ These are created with sensible defaults on first run if not present.
 
 3. **Dynamic Configuration**
    - YAML-based configuration for flexibility
-   - Default creation on first run
+   - Default creation on first run (handles required `import_csv_structure` vs optional `storage`).
 
 4. **Category Management**
    - Categories can't be deleted if in use by transactions
    - System categories (IGNORED, SPLIT) are protected
 
-5. **Multi-Currency Support**
-   - Reports show CAD and USD columns separately
-   - Prevents misleading aggregation of different currencies
+5. **Multi-Currency Import Handling**
+   - **Challenge:** Input CSVs may have separate amount columns (e.g., `CAD$`, `USD$`). The configured `amount_column` might be empty for some transactions.
+   - **Temporary Solution:** If the configured `amount_column` is empty/invalid, the amount defaults to `0.0` to avoid crashing the import. The correct amount might be lost.
+   - **Planned Fix:** Enhance import logic to check multiple potential amount columns, determine the correct currency, and store both accurately (see `ROADMAP.md`).
 
 6. **User Interface Consistency:**
     - **Challenge:** Ensuring consistent formatting and presentation of messages, menus, prompts, and tables throughout the CLI.
@@ -244,26 +256,24 @@ These are created with sensible defaults on first run if not present.
 ## Special Coding Notes
 
 1. **Separation of Concerns:** Strictly adhere to the established modular architecture. UI logic belongs in `cli.py`, core processing in `transaction_processor.py`, data management orchestration in `transactions_manager.py`, low-level data access in `transaction_operations.py`, etc.
-2. **Hashing:** The `BaseTransaction` hash/equality implementation is crucial for duplicate detection.
+2. **Hashing/Equality:** The `BaseTransaction` hash/equality implementation is crucial for duplicate detection. It compares date (`.date()`), description (`.strip().lower()`), and rounded absolute amount (`round(abs(amount), 2)`).
 3. **CLI Menus:** Maintain the consistent menu-based interaction pattern in `cli.py`.
 4. **Report Formatting:** Use `tabulate` *only* within the `Display.table` method for consistent report styling.
-5. **Date Parsing:** Always use `utils.parse_date_multi_format` for consistent handling of various date formats.
-6. **Amount Storage:** Transaction amounts are converted to floats during processing but should be handled carefully to maintain precision (currently stored as string in CSV after initial processing).
+5. **Date Parsing:** Use `utils.parse_date_multi_format` for parsing dates from external sources (like input CSVs). Use specific format parsing (`strptime("%d/%m/%y")`) when reading from internal storage (`transactions.csv`) to ensure consistency.
+6. **Amount Storage:** Transaction amounts are converted to floats during processing but should be handled carefully to maintain precision (currently stored as string with 2 decimal places in CSV).
 7. **Immutability:** Consider transaction objects (like `Transaction`) as largely immutable after creation. Updates should ideally create new instances (as done in `TransactionEditor._update_transaction`).
-8. **Configuration Loading:** Use the `TransactionClassifier.load_yaml` method for robust loading of YAML configuration files. Defaults are created if files are missing.
-9. **System Categories:** Remember that `IGNORED` and `SPLIT` categories have special system meaning and should be handled appropriately (e.g., filtered from user selection menus and standard reports).
-10. **Display Module:** All direct user output (`print`) and input (`input`) should be replaced by calls to the appropriate `Display` class methods (`Display.message`, `Display.prompt`, `Display.table`, etc.).
+8. **Configuration Loading:** Use `main.load_config` for loading `config.yml`. It handles validation (required `import_csv_structure`) and defaults (optional `storage`). `TransactionClassifier.load_yaml` is used for categories/mappings.
+9. **System Categories:** Remember that `IGNORED` and `SPLIT` categories have special system meaning and should be handled appropriately.
+10. **Display Module:** All direct user output (`print`) and input (`input`) should be replaced by calls to the appropriate `Display` class methods.
+11. **Multi-Column Descriptions:** `RawTransaction.from_row` supports combining multiple description columns from the input CSV based on the `import_csv_structure.description_column` setting (if it's a list).
+12. **Multi-Currency Import:** Currently lacks robust handling. If the primary configured `amount_column` is empty, the amount defaults to 0.0. This needs enhancement (see `ROADMAP.md`).
 
 ## Current Development Focus / Refactoring Goals
 
-*   **Consolidate Logic:** Identify and refactor duplicated logic, particularly:
-    *   Transaction splitting (used in `transaction_processor.py` and `transactions_editor.py`).
-    *   User prompting for category/subcategory selection (used in multiple places).
-    *   Transaction creation and saving (ensure consistent use of `TransactionOperations`).
-*   **Improve CLI:** Enhance the user experience in `cli.py` by:
-    *   Making menus clearer and more consistent.
-    *   Improving input validation and error feedback.
-*   **Strengthen Abstractions:** Ensure modules interact through well-defined interfaces and leverage existing abstractions like `TransactionOperations` effectively.
+*   **Address Multi-Currency Import:** Implement proper handling of multiple currency columns during CSV import.
+*   **Consolidate Logic:** Continue identifying and refactoring duplicated logic (splitting, prompting).
+*   **Improve CLI:** Enhance user experience (menus, validation, feedback).
+*   **Strengthen Abstractions:** Ensure modules interact through well-defined interfaces.
 
 ## Human-AI Collaboration Context
 

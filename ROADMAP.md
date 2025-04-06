@@ -12,6 +12,7 @@ This document outlines the development roadmap for cmdbudget, organized by core 
 - [ ] Support for more date formats in imports (partially implemented)
 - [ ] Bulk import from multiple CSV files
 - [ ] Error handling for malformed CSV files
+- [ ] Handle multi-currency amounts during import: Currently, if the configured `amount_column` is empty, the amount defaults to 0.0, even if another currency column (e.g., `USD$`) has the value. Need to detect and use the correct amount and currency.
 
 ## Transaction Management
 

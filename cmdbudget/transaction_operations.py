@@ -119,6 +119,14 @@ class TransactionOperations:
                      logger.warning(f"CSV header mismatch in {file_path}. Expected: {CSV_FIELDNAMES}, Found: {reader.fieldnames}")
                      # Attempt to proceed, but Transaction.from_row might fail if columns missing.
 
+                # Define a specific parser for the known stored date format
+                def parse_stored_date(date_str):
+                    try:
+                        return datetime.strptime(date_str, "%d/%m/%y")
+                    except ValueError as e:
+                        # Re-raise with more context if specific format fails
+                        raise ValueError(f"Error parsing stored date '{date_str}' with format %d/%m/%y: {e}") from e
+
                 line_num = 1 # For error reporting (header is line 1)
                 for row in reader:
                     line_num += 1
@@ -127,7 +135,11 @@ class TransactionOperations:
                         if not all(key in row for key in CSV_FIELDNAMES):
                              logger.error(f"Missing one or more required columns in row {line_num} of {file_path}. Skipping row: {row}")
                              continue
-                        transactions.append(Transaction.from_row(row, parse_date_multi_format))
+                        # Parse the transaction first, using the specific stored date parser
+                        parsed_transaction = Transaction.from_row(row, parse_stored_date)
+                        # Log details *before* appending
+                        logger.info(f"LOADED TX (L{line_num}): Date={parsed_transaction.date.date()}, Desc='{parsed_transaction.description}', Amount={parsed_transaction.amount}, Category='{parsed_transaction.category}'")
+                        transactions.append(parsed_transaction)
                     except ValueError as e:
                         logger.error(f"Error parsing transaction from row {line_num} in {file_path}: {e} - Row: {row}")
                     except Exception as e:

@@ -2,6 +2,42 @@
 # This file contains a log of significant changes and refactoring.
 # License: MIT
 
+## 2024-04-01
+**Author:** Gemini 2.5 Pro
+
+**Changes:**
+
+1.  **Multi-Column Description Import:**
+    *   Modified `RawTransaction.from_row` to allow the `description_column` key in `config.yml`'s `import_csv_structure` section to accept either a single string (column name) or a list of strings (multiple column names).
+    *   If a list is provided, the descriptions from the specified columns are fetched, stripped, and joined with spaces to form the final transaction description.
+    *   Updated `README.md` to document this feature and provide examples.
+    *   **Reason:** To support CSV formats where the transaction description is spread across multiple columns (e.g., 'Description 1', 'Description 2').
+
+2.  **Configuration Refactoring (`import_csv_structure`):**
+    *   Renamed the configuration key `csv_structure` to `import_csv_structure` throughout the codebase (`main.py`, `transaction.py`, `transaction_processor.py`) and in `README.md`.
+    *   Made the `import_csv_structure` section and its keys (`date_column`, `description_column`, `amount_column`) **required** in `config.yml`. Removed logic that defaulted this section.
+    *   Modified `main.py` (`load_config`) to check for the presence of `import_csv_structure` and its required keys, exiting with an error if missing.
+    *   Modified `main.py` so that if `config.yml` is missing, it's created with only the default `storage` section, prompting the user to add the required `import_csv_structure`.
+    *   Removed the redundant defaulting of `csv_structure` from `TransactionClassifier.load_yaml`.
+    *   Updated `README.md` to clarify required vs. optional configuration sections.
+    *   **Reason:** To enforce the necessary CSV configuration for reliable importing and to provide clearer user guidance on required settings.
+
+3.  **Duplicate Detection Bug Fix (Date Parsing):**
+    *   Identified and fixed a bug where duplicate transactions were not skipped due to inconsistent date parsing between the input CSV and the stored `transactions.csv`.
+    *   **Cause:** The flexible `parse_date_multi_format` interpreted stored dates (written as `%d/%m/%y`) incorrectly when reading them back (trying `%m/%d/%y` first).
+    *   **Fix:** Modified `TransactionOperations.read_transactions` to use a specific internal parser (`datetime.strptime(date_str, "%d/%m/%y")`) when reading from `transactions.csv`. The flexible parser is still used for the input CSV.
+    *   Updated `Transaction.from_row` to accept the specific parser.
+    *   Added details to `FIXED.md`.
+    *   **Reason:** To ensure accurate duplicate detection by consistently parsing stored dates.
+
+4.  **Amount Parsing Workaround (Multi-Currency Issue):**
+    *   Modified `RawTransaction.from_row` to handle cases where the configured `amount_column` (e.g., `CAD$`) is empty or contains non-numeric data in the input CSV.
+    *   If the primary amount column is empty/invalid, the transaction amount defaults to `0.0` to prevent crashing during import.
+    *   **Reason:** Temporary workaround to allow import processing to continue when dealing with CSVs that have separate columns for different currencies (e.g., `CAD$`, `USD$`). The proper fix (detecting currency and amount from the correct column) is logged in `ROADMAP.md`.
+
+**Test Coverage:**
+*   0% (No automated tests currently implemented).
+
 ## 2024-03-31
 **Author:** Gemini 2.5 Pro
 

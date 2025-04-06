@@ -120,36 +120,39 @@ The application uses YAML files for configuration. Default files are created on 
 
 This file controls CSV import settings and storage locations. Edit it to match your bank's CSV export format and preferred storage path. All paths are relative to the project root unless an absolute path is given.
 
+**Required Section:**
+
+*   `import_csv_structure`: Defines how to read your bank's CSV.
+    *   `description_column` (Required): Name of the column containing the transaction description, OR a list of column names to combine (using spaces).
+    *   `amount_column` (Required): Name of the column containing the transaction amount.
+    *   `date_column` (Required): Name of the column containing the transaction date.
+    *   `default_currency` (Optional, defaults to 'CAD'): Default currency code.
+    *   `expenses_are_positive` (Optional, defaults to `true`): Set `true` if expenses are positive numbers in your CSV, `false` if they are negative.
+
+**Optional Section:**
+
+*   `storage`: Defines where transaction files are stored.
+    *   `transaction_file_path` (Optional, defaults to 'transactions.csv'): Path to the main stored transaction file.
+    *   `new_transaction_file_path` (Optional, defaults to 'new_transactions.csv'): Path to the CSV file used for imports.
+
 **Example `config.yml`:**
 
 ```yaml
-csv_structure:
-  # Name of the column in your CSV containing the transaction description
-  description_column: 'Description 1'
-  
-  # Name of the column containing the transaction amount 
-  # (ensure this corresponds to your default currency if multiple currency columns exist)
+# REQUIRED section:
+import_csv_structure:
+  # Can be a single string or a list:
+  # description_column: 'Transaction Details' 
+  description_column:
+    - 'Description 1'
+    - 'Description 2'
   amount_column: 'CAD$'
-  
-  # Name of the column containing the transaction date
   date_column: 'Transaction Date'
-  
-  # Default currency to assume for transactions (e.g., CAD, USD)
-  # Will be used if no specific currency column is identified (future feature)
-  default_currency: 'CAD'
+  default_currency: 'CAD' # Optional
+  expenses_are_positive: false # Optional (set true/false based on your bank CSV)
 
-  # Set to true if expenses/debits are positive numbers in your CSV.
-  # Set to false if expenses/debits are negative numbers.
-  # Defaults to true if not specified.
-  expenses_are_positive: true
-
+# OPTIONAL section (defaults shown):
 storage:
-  # Path (relative or absolute) where the main transaction data will be stored.
-  # Defaults to 'transactions.csv' in the project root if 'storage' section is missing.
   transaction_file_path: 'transactions.csv'
-
-  # Path (relative or absolute) where the CSV file for new imports is located.
-  # Defaults to 'new_transactions.csv' in the project root if 'storage' section is missing.
   new_transaction_file_path: 'new_transactions.csv'
 ```
 

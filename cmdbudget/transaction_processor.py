@@ -43,15 +43,15 @@ class TransactionClassifier:
                  default_content = {'categories': {"IGNORED": [], "SPLIT": []}} 
             elif 'config' in file_path:
                  # Define default config structure if needed
+                 # NOTE: config.yml creation is primarily handled by main.py now.
+                 # This default is unlikely to be used for config.yml but kept for structure.
+                 # We only default storage here, as import_csv_structure is required.
                  default_content = {
-                     'csv_structure': {
-                         'date_column': 'Transaction Date', # Example defaults
-                         'description_column': 'Description', 
-                         'amount_column': 'Amount',
-                         'default_currency': 'CAD' 
-                     }, 
-                     'storage': {
-                         'transaction_file_path': 'transactions.csv'
+                     'storage': { 
+                         'transaction_file_path': 'transactions.csv',
+                         # Add new_transaction_file_path for completeness if needed here,
+                         # mirroring main.py's default.
+                         'new_transaction_file_path': 'new_transactions.csv' 
                      }
                  }
             
@@ -248,10 +248,10 @@ class NewTransactionProcessor:
         added_count = 0      # Track added transactions
         transactions_to_save = [] # Collect transactions to save at the end
 
-        config = self.classifier.config.get('csv_structure', {})
+        config = self.classifier.config.get('import_csv_structure', {})
         if not config:
-            logger.error("CSV structure configuration not found in config.yml")
-            Display.error("CSV structure configuration not found. Cannot process new transactions.")
+            logger.error("Import CSV structure configuration not found in config.yml")
+            Display.error("Import CSV structure configuration not found. Cannot process new transactions.")
             return False
         default_currency = config.get('default_currency', 'CAD')
 

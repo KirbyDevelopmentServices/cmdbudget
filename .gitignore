@@ -4,8 +4,7 @@ categories.yml
 transaction_mappings.yml
 
 # Transaction data
-transactions.csv
-new_transactions.csv
+*.csv
 
 # Python
 __pycache__/
@@ -17,3 +16,8 @@ env/
 venv/ 
 
 .DS_Store
+Budgetting.code-workspace
+Budgetting.code-workspace.zip
+# VSCode
+.vscode/
+.cursor/

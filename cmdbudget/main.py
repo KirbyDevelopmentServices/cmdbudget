@@ -32,101 +32,85 @@ DEFAULT_NEW_TRANSACTIONS_FILE = 'new_transactions.csv'
 logger = logging.getLogger(__name__)
 
 def load_config():
-    """Loads configuration from YAML file, creates defaults, and validates structure."""
+    """Loads configuration from YAML file, creates default storage config, and validates structure."""
     default_storage_config = {
         'transaction_file_path': DEFAULT_TRANSACTIONS_FILE,
         'new_transaction_file_path': DEFAULT_NEW_TRANSACTIONS_FILE
     }
-    default_csv_structure = {
-        'date_column': 'Transaction Date',
-        'description_column': 'Description',
-        'amount_column': 'Amount',
-        'default_currency': 'CAD',
-        'expenses_are_positive': True # Default: expenses in CSV are positive numbers
-    }
+    # Remove default_csv_structure dictionary
 
     if not os.path.exists(CONFIG_FILE):
-        # Use Display.warning instead of logger.warning for user output
-        Display.warning(f"{CONFIG_FILE} not found. Creating default configuration.")
+        Display.warning(f"{CONFIG_FILE} not found. Creating default configuration with storage paths only.")
+        # Only create default storage config
         default_config = {
-            'csv_structure': default_csv_structure, # Use default structure
-            'storage': default_storage_config # Include default storage here
+            'storage': default_storage_config 
         }
         try:
             with open(CONFIG_FILE, 'w') as file:
                 yaml.dump(default_config, file)
-            # Use Display.message instead of logger.info
-            Display.message(f"Default {CONFIG_FILE} created.")
-            return default_config
+            Display.message(f"Default {CONFIG_FILE} created with default storage settings.")
+            Display.error(f"Please edit {CONFIG_FILE} to add the required 'import_csv_structure' section before running again.")
+            sys.exit(f"Configuration incomplete. Exiting.")
         except IOError as e:
-            # Use Display.error instead of logger.error
             Display.error(f"Could not create default {CONFIG_FILE}: {e}")
             sys.exit(f"Error: Could not create {CONFIG_FILE}. Exiting.")
 
+    # Load existing config file
     try:
-        with open(CONFIG_FILE, 'r', encoding='utf-8') as file: # Specify encoding
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as file: 
             config = yaml.safe_load(file)
-            if not config: # Handle empty file
-                 # Use Display.error instead of logger.error
+            if not config: 
                  Display.error(f"{CONFIG_FILE} is empty. Please provide a valid configuration.")
                  sys.exit(f"Error: {CONFIG_FILE} is empty. Exiting.")
 
             # --- Validation and Defaulting --- 
-            # 1. Handle optional/defaulting 'csv_structure'
-            if 'csv_structure' not in config:
-                # Use Display.warning instead of logger.warning
-                Display.warning(f"'csv_structure' section not found in {CONFIG_FILE}. Using defaults.")
-                config['csv_structure'] = default_csv_structure
-            else:
-                # Ensure it's a dictionary
-                if not isinstance(config['csv_structure'], dict):
-                    # Use Display.error instead of logger.error
-                    Display.error(f"'csv_structure' section in {CONFIG_FILE} must be a dictionary.")
-                    sys.exit(f"Error: Invalid 'csv_structure' section in {CONFIG_FILE}. Exiting.")
-                # Check for required keys within csv_structure
-                required_csv_keys = ['date_column', 'description_column', 'amount_column']
-                for key in required_csv_keys:
-                    if key not in config['csv_structure']:
-                        # Use Display.error instead of logger.error
-                        Display.error(f"Missing required key '{key}' in {CONFIG_FILE}['csv_structure'].")
-                        sys.exit(f"Error: Invalid CSV structure in {CONFIG_FILE}. Exiting.")
-                # Add defaults for optional keys if missing
-                if 'default_currency' not in config['csv_structure']:
-                     # Use Display.warning instead of logger.warning
-                     Display.warning(f"'default_currency' missing in {CONFIG_FILE}['csv_structure']. Using default: 'CAD'")
-                     config['csv_structure']['default_currency'] = 'CAD' # Example default
-                if 'expenses_are_positive' not in config['csv_structure']:
-                     # Use Display.warning instead of logger.warning
-                     Display.warning(f"'expenses_are_positive' missing in {CONFIG_FILE}['csv_structure']. Using default: True")
-                     config['csv_structure']['expenses_are_positive'] = True
-                 # Validate the type of expenses_are_positive
-                if not isinstance(config['csv_structure'].get('expenses_are_positive'), bool):
-                     # Use Display.error instead of logger.error
-                     Display.error(f"'expenses_are_positive' in {CONFIG_FILE}['csv_structure'] must be true or false.")
-                     sys.exit(f"Error: Invalid value for 'expenses_are_positive' in {CONFIG_FILE}. Exiting.")
+            # 1. Validate REQUIRED 'import_csv_structure' section
+            if 'import_csv_structure' not in config:
+                Display.error(f"Required section 'import_csv_structure' not found in {CONFIG_FILE}.")
+                sys.exit(f"Configuration error: Missing 'import_csv_structure' section. Exiting.")
+            
+            csv_config = config['import_csv_structure'] # Use the new name
+
+            if not isinstance(csv_config, dict):
+                Display.error(f"'import_csv_structure' section in {CONFIG_FILE} must be a dictionary.")
+                sys.exit(f"Error: Invalid 'import_csv_structure' section. Exiting.")
+            
+            # Check for required keys within import_csv_structure
+            required_csv_keys = ['date_column', 'description_column', 'amount_column']
+            for key in required_csv_keys:
+                if key not in csv_config:
+                    Display.error(f"Missing required key '{key}' in {CONFIG_FILE}['import_csv_structure'].")
+                    sys.exit(f"Error: Invalid CSV structure configuration. Exiting.")
+            
+            # Handle OPTIONAL keys within import_csv_structure, providing defaults
+            if 'default_currency' not in csv_config:
+                 Display.warning(f"'default_currency' missing in {CONFIG_FILE}['import_csv_structure']. Using default: 'CAD'")
+                 csv_config['default_currency'] = 'CAD'
+            if 'expenses_are_positive' not in csv_config:
+                 Display.warning(f"'expenses_are_positive' missing in {CONFIG_FILE}['import_csv_structure']. Using default: True")
+                 csv_config['expenses_are_positive'] = True
+            # Validate the type of expenses_are_positive
+            if not isinstance(csv_config.get('expenses_are_positive'), bool):
+                 Display.error(f"'expenses_are_positive' in {CONFIG_FILE}['import_csv_structure'] must be true or false.")
+                 sys.exit(f"Error: Invalid value for 'expenses_are_positive'. Exiting.")
 
             # 2. Handle optional 'storage' section
             if 'storage' not in config:
-                # Use Display.warning instead of logger.warning
-                Display.warning(f"'storage' section not found in {CONFIG_FILE}. Using default file paths.")
+                Display.warning(f"'storage' section not found in {CONFIG_FILE}. Using default file paths: {default_storage_config}")
                 config['storage'] = default_storage_config
             else:
-                 # Ensure storage is a dictionary
+                 # Validate storage structure if present
                  if not isinstance(config['storage'], dict):
-                      # Use Display.error instead of logger.error
-                      Display.error(f"'storage' section in {CONFIG_FILE} must be a dictionary (key-value pairs).")
-                      sys.exit(f"Error: Invalid 'storage' section in {CONFIG_FILE}. Exiting.")
-                 # Check for specific paths within storage, providing defaults if missing
+                      Display.error(f"'storage' section in {CONFIG_FILE} must be a dictionary.")
+                      sys.exit(f"Error: Invalid 'storage' section. Exiting.")
+                 # Apply defaults for missing keys within storage
                  if 'transaction_file_path' not in config['storage']:
-                      # Use Display.warning instead of logger.warning
                       Display.warning(f"'transaction_file_path' missing in {CONFIG_FILE}['storage']. Using default: {DEFAULT_TRANSACTIONS_FILE}")
                       config['storage']['transaction_file_path'] = DEFAULT_TRANSACTIONS_FILE
                  if 'new_transaction_file_path' not in config['storage']:
-                      # Use Display.warning instead of logger.warning
                       Display.warning(f"'new_transaction_file_path' missing in {CONFIG_FILE}['storage']. Using default: {DEFAULT_NEW_TRANSACTIONS_FILE}")
                       config['storage']['new_transaction_file_path'] = DEFAULT_NEW_TRANSACTIONS_FILE
 
-            # Keep internal debug log call
             logger.debug(f"Loaded configuration: {config}")
             return config
     except yaml.YAMLError as e:

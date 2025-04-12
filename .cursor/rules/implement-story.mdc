@@ -1,0 +1,92 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Command rule for implementing user stories as Senior Software Developer
+globs: ["*.py", "*.md", "product/features/*/*.md"]
+alwaysApply: false
+---
+
+# Implement Story Command
+
+This command instructs the Senior Software Developer to implement a user story following a structured process.
+
+## Command Trigger
+When the user says "implement this user story", the Senior Software Developer will:
+
+1. **Create Implementation Branch**
+   - Create a new git branch named `feature/<story-name>` where story-name is derived from the user story title
+   - Example: For "Configure Multi-Currency Settings" story, branch would be `feature/configure-multi-currency-settings`
+
+2. **Process Implementation Tasks**
+   For each task in the Technical Breakdown section:
+   
+   A. **Implement Task**
+      - Write code according to the task specifications
+      - Follow established coding conventions
+      - Ensure proper error handling
+      - Add necessary tests
+      - Validate implementation against acceptance criteria
+
+   B. **Create Commit Message**
+      Format:
+      ```
+      [Task Name] - [Brief Description]
+      
+      - Implemented [specific changes]
+      - Added [new features/components]
+      - Modified [existing code]
+      - Fixed [any issues]
+      
+      AI Model: Claude 3.7 Sonnet
+      Date: [Current Date]
+      ```
+
+   C. **Commit Changes**
+      ```bash
+      git add .
+      git commit -m "[Commit Message from Step B]"
+      ```
+
+3. **Final Code Review**
+   - Review all changes on the branch
+   - Identify opportunities for simple refactoring
+   - Apply refactoring if it improves code quality without changing functionality
+   - Create final commit for any refactoring changes
+
+## Implementation Guidelines
+- Follow Test-Driven Development (TDD) approach
+- Maintain backward compatibility
+- Ensure proper error handling
+- Add comprehensive tests
+- Follow established coding conventions
+- Document significant implementation decisions
+
+## Example Implementation
+For a task like "Extend Configuration System":
+```python
+# Implementation code here
+# Followed by tests
+# Then commit with message:
+"""
+Extend Configuration System - Add currency configuration structure
+
+- Added currency_columns configuration section
+- Implemented currency priority list
+- Added default currency setting
+- Updated configuration validation
+
+AI Model: Claude 3.7 Sonnet
+Date: 2024-04-02
+"""
+```
+
+## Success Criteria
+- All tasks from Technical Breakdown are implemented
+- Code passes all tests
+- Implementation matches acceptance criteria
+- Changes are properly committed with descriptive messages
+- Code quality is maintained or improved
+- Documentation is updated as needed

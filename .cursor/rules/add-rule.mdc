@@ -1,0 +1,35 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: How to create and use Cursor rules
+globs:
+alwaysApply: true
+---
+
+# Creating Cursor Rules
+
+Cursor rules are custom documentation that help the AI understand your codebase. Here's how to create effective rules:
+
+## Rule Structure
+- Rules are stored in `.cursor/rules/` as `.mdc` files
+- Each rule should have a clear purpose and description
+- Use the frontmatter section to configure rule behavior
+
+## Frontmatter Options
+- `description`: Brief summary of what the rule explains (shown in rule list)
+- `globs`: File patterns the rule applies to (e.g., `["*.js", "src/**/*.tsx"]`)
+- `alwaysApply`: Set to `true` to apply this rule to all conversations
+
+## Content Tips
+- Use markdown for formatting (headers, lists, code blocks)
+- Reference specific files with `@filepath` syntax
+- Include code examples when relevant
+- Keep rules concise but informative
+- Focus on architectural patterns, conventions, and gotchas
+
+## How to Use Rules
+- Rules are automatically provided to AI when relevant to your query
+- You can explicitly reference rules with `@rule-name` in your prompts

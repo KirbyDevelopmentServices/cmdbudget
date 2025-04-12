@@ -1,0 +1,78 @@
+# Project Rules for cmdbudget
+*AI GENERATED AND MAINTAINED BY Claude 3.7 Sonnet*
+
+## Important Instructions
+
+**General:**
+* **File Tagging:** When creating any new file, always tag it as AI generated using the consistent patterns below. Use your *specific model identifier* (e.g., Claude 3.7 Sonnet) in the `[AI Model Identifier]` placeholder. Update this identifier if your model version changes.
+* **Documentation:** *Proactively* maintain and update `README.md`, `product/ROADMAP.md`, `product/FIXED.md`, and the knowledge base file `KB.AI` as the project evolves. Ensure documentation accurately reflects the current codebase state.
+    * Check off completed items in `product/ROADMAP.md`.
+    * Update `README.md` with new features or usage changes.
+    * Record bug fixes in `product/FIXED.md` with detailed context.
+    * Add new architectural decisions, implementation details, or significant refactoring notes to the `KB.AI` file.
+    * Update `product/PRD.md` and feature breakdowns in `product/features/` to reflect product evolution.
+* **Coding:** Leave detailed inline comments for complex logic. Adhere strictly to the coding conventions outlined below.
+* **Cursor Rules:** Generate new cursor rules (.cursor/rules/*.mdc files) for concepts that require strict compliance or frequent reference. Existing cursor rules should be maintained and updated.
+
+**Tagging Patterns:**
+
+- For Python files: Add these comments to the first 3 lines of each file:
+  ```python
+  # AI generated and maintained by [AI Model Identifier]
+  # This file [brief description of file purpose]
+  # License: MIT
+  ```
+
+- For Markdown files: Add this HTML comment after the title:
+  ```markdown
+  <!-- AI generated and maintained by [AI Model Identifier] -->
+  ```
+
+- For other text files (like LICENSE): Add this line near the top:
+  ```
+  *AI GENERATED AND MAINTAINED BY [AI Model Identifier]*
+  ```
+
+**Documentation Maintenance:**
+
+Continuously maintain and update the README.md and ROADMAP.md files as features are completed or added to the project. When a feature is implemented:
+1. Check it off in the ROADMAP.md file
+2. Update the relevant section in the README.md if necessary to reflect new capabilities
+3. Ensure documentation stays in sync with actual implementation
+
+Maintain a record of code changes, bug fixes, and style improvements:
+1. Leave detailed inline comments about complex logic or implementation decisions
+2. For every bug fixed, document it in FIXED.md with:
+   - Date of fix
+   - Description of the bug
+   - Root cause analysis
+   - Solution implemented
+   - Any preventive measures added
+3. Document any coding style changes or pattern improvements in KB.AI
+4. Update the KB.AI file with any new architectural decisions or implementation details
+
+## Coding Conventions
+
+1. **Type Annotations**: Use comprehensively for all function signatures and variables where practical.
+2. **Docstrings**: Provide clear, concise docstrings for all classes and public methods explaining their purpose, arguments, and return values.
+3. **Error Handling**: Implement robust error handling, especially for file I/O, data parsing (CSV, YAML), and user input validation.
+4. **Logging**: Utilize the `logging` module *only* for internal debugging or error information not intended for direct user view (e.g., detailed stack traces, internal state). User feedback (warnings, errors, status messages) should use the `Display` module.
+5. **Modularity & DRY (Don't Repeat Yourself)**: *Actively refactor* to ensure high cohesion within modules and low coupling between them. Strive to eliminate code duplication by creating reusable functions or classes (e.g., use `TransactionOperations` consistently, consolidate prompting logic).
+6. **Clarity over Brevity**: Write clear, readable code. Use meaningful variable and function names.
+7. **User Interaction**: All user interaction (prompts, menus, messages, tables) **must** be channeled through the `cmdbudget/display.py` module.
+8. **Package Structure**: Maintain the established package structure within `cmdbudget/` and use relative imports for intra-package dependencies.
+
+## Special Coding Notes
+
+1. **Separation of Concerns:** Strictly adhere to the established modular architecture. UI logic belongs in `cli.py`, core processing in `transaction_processor.py`, data management orchestration in `transactions_manager.py`, low-level data access in `transaction_operations.py`, etc.
+2. **Hashing/Equality:** The `BaseTransaction` hash/equality implementation is crucial for duplicate detection. It compares date (`.date()`), description (`.strip().lower()`), and rounded absolute amount (`round(abs(amount), 2)`).
+3. **CLI Menus:** Maintain the consistent menu-based interaction pattern in `cli.py`.
+4. **Report Formatting:** Use `tabulate` *only* within the `Display.table` method for consistent report styling.
+5. **Date Parsing:** Use `utils.parse_date_multi_format` for parsing dates from external sources (like input CSVs). Use specific format parsing (`strptime("%d/%m/%y")`) when reading from internal storage (`transactions.csv`) to ensure consistency.
+6. **Amount Storage:** Transaction amounts are converted to floats during processing but should be handled carefully to maintain precision (currently stored as string with 2 decimal places in CSV).
+7. **Immutability:** Consider transaction objects (like `Transaction`) as largely immutable after creation. Updates should ideally create new instances (as done in `TransactionEditor._update_transaction`).
+8. **Configuration Loading:** Use `main.load_config` for loading `config.yml`. It handles validation (required `import_csv_structure`) and defaults (optional `storage`). `TransactionClassifier.load_yaml` is used for categories/mappings.
+9. **System Categories:** Remember that `IGNORED` and `SPLIT` categories have special system meaning and should be handled appropriately.
+10. **Display Module:** All direct user output (`print`) and input (`input`) should be replaced by calls to the appropriate `Display` class methods.
+11. **Multi-Column Descriptions:** `RawTransaction.from_row` supports combining multiple description columns from the input CSV based on the `import_csv_structure.description_column` setting (if it's a list).
+12. **Multi-Currency Import:** Currently lacks robust handling. If the primary configured `amount_column` is empty, the amount defaults to 0.0. This needs enhancement (see `ROADMAP.md`).

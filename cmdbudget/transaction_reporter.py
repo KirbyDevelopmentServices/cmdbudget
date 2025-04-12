@@ -26,15 +26,22 @@ def category_grouping_factory():
 
 class TransactionCategoryGrouper:
     def __init__(self, transactions):
-        # Filter out ignored transactions
-        self.transactions = [t for t in transactions if t.category != "IGNORED"]
+        # Filter out ignored and split transactions
+        self.transactions = [t for t in transactions if t.category not in ["IGNORED", "SPLIT"]]
 
     def group(self):
         category_mapping = defaultdict(category_grouping_factory)
         for transaction in self.transactions:
+            # Skip if category is IGNORED or SPLIT
+            if transaction.category in ["IGNORED", "SPLIT"]:
+                continue
+                
             category_mapping[transaction.category]["spends"][transaction.currency.upper()] += transaction.amount
 
             if transaction.subcategory:
+                # Skip if subcategory is IGNORED or SPLIT
+                if transaction.subcategory in ["IGNORED", "SPLIT"]:
+                    continue
                 category_mapping[transaction.category]["subcategories"][transaction.subcategory] += transaction.amount
 
         return category_mapping
@@ -111,8 +118,9 @@ class TransactionReporter:
             else: # Should not happen given the first check, but included for completeness
                  return amount_str
 
-        # Get all categories from both months
+        # Get all categories from both months, excluding SPLIT, IGNORED, and CAD
         all_categories = set(current_grouped.keys()) | set(prev_grouped.keys())
+        all_categories = {cat for cat in all_categories if cat not in ["SPLIT", "IGNORED", "CAD", "USD"]}
         
         first_category = True
         for category_name in sorted(all_categories):
@@ -125,43 +133,39 @@ class TransactionReporter:
             current_data = current_grouped.get(category_name, {"spends": {"CAD": 0, "USD": 0}, "subcategories": {}})
             prev_data = prev_grouped.get(category_name, {"spends": {"CAD": 0, "USD": 0}, "subcategories": {}})
             
-            current_spends = current_data["spends"]
-            prev_spends = prev_data["spends"]
-            
-            # Calculate category totals
-            cad_amount = current_spends["CAD"]
-            prev_cad = prev_spends["CAD"]
-            usd_amount = current_spends["USD"]
-            prev_usd = prev_spends["USD"]
+            # Calculate category totals from subcategories
+            cad_amount = sum(amount for amount in current_data["subcategories"].values())
+            prev_cad = sum(amount for amount in prev_data["subcategories"].values())
+            usd_amount = 0  # Assuming USD is not used for subcategories
+            prev_usd = 0
             
             totals["CAD"] += cad_amount
             totals["USD"] += usd_amount
             prev_totals["CAD"] += prev_cad
             prev_totals["USD"] += prev_usd
             
-            if cad_amount > 0 or prev_cad > 0 or usd_amount > 0 or prev_usd > 0:
-                # Add category with bold formatting
-                table_data.append([
-                    f"\033[1m{category_name}\033[0m",
-                    format_amount_with_change(cad_amount, prev_cad),
-                    format_amount_with_change(usd_amount, prev_usd)
-                ])
+            # Add category with bold formatting
+            table_data.append([
+                f"\033[1m{category_name}\033[0m",
+                format_amount_with_change(cad_amount, prev_cad),
+                format_amount_with_change(usd_amount, prev_usd)
+            ])
 
-                # Add subcategories
-                current_subcats = current_data["subcategories"]
-                prev_subcats = prev_data["subcategories"]
-                all_subcats = set(current_subcats.keys()) | set(prev_subcats.keys())
+            # Add subcategories
+            current_subcats = current_data["subcategories"]
+            prev_subcats = prev_data["subcategories"]
+            all_subcats = set(current_subcats.keys()) | set(prev_subcats.keys())
+            all_subcats = {subcat for subcat in all_subcats if subcat not in ["SPLIT", "IGNORED", "CAD", "USD"]}
+            
+            for subcat in sorted(all_subcats):
+                current_sub_amount = current_subcats.get(subcat, 0)
+                prev_sub_amount = prev_subcats.get(subcat, 0)
                 
-                for subcat in sorted(all_subcats):
-                    current_sub_amount = current_subcats.get(subcat, 0)
-                    prev_sub_amount = prev_subcats.get(subcat, 0)
-                    
-                    if current_sub_amount > 0 or prev_sub_amount > 0:
-                        table_data.append([
-                            f"  └─ {subcat}",
-                            format_amount_with_change(current_sub_amount, prev_sub_amount),
-                            "-"  # Assuming subcategories are only in primary currency
-                        ])
+                table_data.append([
+                    f"  └─ {subcat}",
+                    format_amount_with_change(current_sub_amount, prev_sub_amount),
+                    "-"  # Assuming subcategories are only in primary currency
+                ])
 
         # Add separator before total
         table_data.append(["=" * 20, "=" * 25, "=" * 25])
@@ -195,37 +199,41 @@ class TransactionReporter:
             
             if category_transactions:
                 month_name = datetime(year, month, 1).strftime('%B %Y')
-                currency_totals = defaultdict(float)
+                total_amount = sum(t.amount for t in category_transactions)
+                yearly_totals[year]["total"] += total_amount
                 
-                for t in category_transactions:
-                    currency_totals[t.currency] += t.amount
-                    yearly_totals[year][t.currency] += t.amount
-
-                row = [
+                # Add month data
+                table_data.append([
                     month_name,
-                    f"${currency_totals['CAD']:,.2f}" if currency_totals['CAD'] > 0 else "-",
-                    f"${currency_totals['USD']:,.2f}" if currency_totals['USD'] > 0 else "-"
-                ]
-                table_data.append(row)
+                    f"${total_amount:,.2f}"
+                ])
 
-        # Add yearly subtotals
-        if yearly_totals:
-            table_data.append(["-" * 20, "-" * 15, "-" * 15])
-            for year in sorted(yearly_totals.keys()):
-                totals = yearly_totals[year]
-                row = [
-                    f"{year} Total",
-                    f"${totals['CAD']:,.2f}" if totals['CAD'] > 0 else "-",
-                    f"${totals['USD']:,.2f}" if totals['USD'] > 0 else "-"
-                ]
-                table_data.append(row)
+                # Add subcategories
+                subcategory_totals = defaultdict(float)
+                for t in category_transactions:
+                    if t.subcategory:
+                        subcategory_totals[t.subcategory] += t.amount
+                
+                for subcat, amount in sorted(subcategory_totals.items()):
+                    table_data.append([
+                        f"  └─ {subcat}",
+                        f"${amount:,.2f}"
+                    ])
+
+        # Add yearly totals
+        table_data.append(["=" * 20, "=" * 15])
+        for year in sorted(yearly_totals.keys()):
+            table_data.append([
+                f"\033[1m{year} Total\033[0m",
+                f"${yearly_totals[year]['total']:,.2f}"
+            ])
 
         # Use Display.table
         Display.table(
             table_data,
-            headers=["Month", "CAD", "USD"],
+            headers=["\033[1mMonth\033[0m", "\033[1mAmount\033[0m"],
             tablefmt="pretty",
-            colalign=("left", "right", "right")
+            colalign=("left", "right")
         )
 
     def display_tag_data(self, tag: str):

@@ -152,3 +152,58 @@ See `product/ROADMAP.md` for detailed plans, organized by feature category.
 ## Human-AI Collaboration Context
 
 This project demonstrates effective human-AI collaboration, where the AI assistant generated the entire codebase while working with a human developer to fulfill their personal financial tracking needs. The code was iteratively refined based on feedback, demonstrating how AI can augment human work.
+
+## Multi-Currency Implementation
+
+### Architecture
+- **Configuration**: Currency settings are part of `import_csv_structure` in `config.yml`
+  - `currency_columns`: Maps currency codes to CSV column names
+  - `currency_priority`: Defines order for currency detection
+  - `default_currency`: Fallback when no currency detected
+  - `currency_formatting`: Controls display formatting
+
+### Key Components
+1. **RawTransaction Class**
+   - Detects currency from CSV columns based on priority
+   - Stores currency information with transaction
+   - Handles multiple description columns
+
+2. **Transaction Class**
+   - Stores currency information
+   - Maintains currency through categorization
+
+3. **CurrencyUtils Module**
+   - Centralizes currency formatting logic
+   - Handles symbol placement and decimal places
+   - Provides configuration access methods
+
+4. **Display Class**
+   - Integrates currency formatting in tables
+   - Supports configurable currency display
+
+### Design Decisions
+1. **Currency Detection**
+   - Priority-based system for multiple currency columns
+   - First non-zero amount in priority order is used
+   - Default currency fallback for missing data
+
+2. **Formatting**
+   - Configurable per currency
+   - Supports before/after symbol placement
+   - Customizable decimal places
+
+3. **Storage**
+   - Currency information stored with transactions
+   - Maintained through categorization process
+   - Preserved in CSV storage
+
+### Best Practices
+1. **Configuration**
+   - Use consistent column names
+   - Order currency priority by frequency
+   - Set primary currency as default
+
+2. **Implementation**
+   - Use currency_utils for formatting
+   - Validate currency configuration
+   - Handle missing currency data gracefully

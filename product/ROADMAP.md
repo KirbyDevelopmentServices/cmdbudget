@@ -67,3 +67,10 @@ This document outlines the development roadmap for cmdbudget, organized by core 
 - [ ] Simple REST API for integration with other tools
 - [ ] Terminal UI improvements (colors, interactive elements)
 - [ ] Recurring transaction identification
+
+### Phase 2: Enhanced Features
+- [x] Multi-currency support (CAD/USD)
+  - [x] Currency detection from CSV columns
+  - [x] Currency formatting configuration
+  - [x] Default currency fallback
+  - [x] Currency priority system

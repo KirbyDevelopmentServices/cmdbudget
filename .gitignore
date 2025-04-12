@@ -20,4 +20,8 @@ Budgetting.code-workspace
 Budgetting.code-workspace.zip
 # VSCode
 .vscode/
-.cursor/
+.cursor/**
+.cursor/*
+./.cursor/*
+./.cursor/**
+ai_files/**

@@ -29,7 +29,11 @@ The tool is designed to be backward-looking, meaning it helps you understand whe
 - **Monthly Reports**: View spending by category/subcategory with percentage changes from previous months
 - **Category History**: Analyze spending in specific categories across all months
 - **Tag Analysis**: Track and analyze tagged expenses (e.g., "vacation" or "work expenses")
-- **Multi-Currency Support**: Track and report on spending in multiple currencies (primarily CAD/USD)
+- **Multi-Currency Support**: Import and manage transactions in multiple currencies with configurable formatting and priority
+  - Define currency columns in your CSV files
+  - Set currency priority for automatic detection
+  - Customize currency formatting (symbol position, decimal places)
+  - Default currency fallback
 
 ### Configuration
 - **Flexible CSV Import**: Configure the importer to work with your bank's specific CSV format
@@ -128,6 +132,9 @@ This file controls CSV import settings and storage locations. Edit it to match y
     *   `date_column` (Required): Name of the column containing the transaction date.
     *   `default_currency` (Optional, defaults to 'CAD'): Default currency code.
     *   `expenses_are_positive` (Optional, defaults to `true`): Set `true` if expenses are positive numbers in your CSV, `false` if they are negative.
+    *   `currency_columns` (Optional): Dictionary mapping currency codes to CSV column names.
+    *   `currency_priority` (Optional): List of currency codes in order of priority for detection.
+    *   `currency_formatting` (Optional): Configuration for currency display formatting.
 
 **Optional Section:**
 
@@ -149,12 +156,34 @@ import_csv_structure:
   date_column: 'Transaction Date'
   default_currency: 'CAD' # Optional
   expenses_are_positive: false # Optional (set true/false based on your bank CSV)
+  
+  # Multi-currency configuration (Optional)
+  currency_columns:
+    CAD: "CAD$"
+    USD: "USD$"
+    EUR: "EUR€"
+  currency_priority: ["CAD", "USD", "EUR"]
+  currency_formatting:
+    CAD:
+      symbol: "$"
+      position: "before"
+      decimal_places: 2
+    USD:
+      symbol: "$"
+      position: "before"
+      decimal_places: 2
+    EUR:
+      symbol: "€"
+      position: "after"
+      decimal_places: 2
 
 # OPTIONAL section (defaults shown):
 storage:
   transaction_file_path: 'transactions.csv'
   new_transaction_file_path: 'new_transactions.csv'
 ```
+
+For detailed information about multi-currency configuration, see [Currency Configuration](documentation/currency_configuration.md).
 
 ### `categories.yml`
 

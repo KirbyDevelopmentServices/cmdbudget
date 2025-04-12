@@ -63,6 +63,7 @@ class RawTransaction(BaseTransaction):
     _date: datetime
     _description: str
     _amount: float # Stores the amount with sign based on config (positive for expense)
+    _currency: str # Store the detected currency
     _raw_data: dict # Optional: store original row data
 
     @property
@@ -77,6 +78,10 @@ class RawTransaction(BaseTransaction):
     def amount(self) -> float:
         return self._amount
 
+    @property
+    def currency(self) -> str:
+        return self._currency
+
     @classmethod
     def from_row(cls, row: dict, config: dict, date_parser) -> 'RawTransaction':
         """Create a RawTransaction from a CSV row using configuration.
@@ -88,77 +93,75 @@ class RawTransaction(BaseTransaction):
         Raises KeyError if required columns are missing.
         """
         try:
-            # The `config` parameter *is* the import structure config
-            # No need to access config['import_csv_structure'] again
-
             # Extract config flags first for clarity
             expenses_positive = config.get('expenses_are_positive', True) # Default true
             date_col = config['date_column']
             desc_col_key = 'description_column' # Key name
-            amount_col = config['amount_column']
+            currency_columns = config.get('currency_columns', {'CAD': 'CAD$'})
+            currency_priority = config.get('currency_priority', ['CAD'])
+            default_currency = config.get('default_currency', 'CAD')
 
             date_val = date_parser(row[date_col])
             
             # --- Handle Description Column(s) ---
             desc_config = config[desc_col_key] # Get the config value (str or list)
             if isinstance(desc_config, list):
-                # Combine descriptions from multiple columns
-                # Use row.get(col_name, '') to avoid KeyError if a column is missing in a row
                 desc_parts = [row.get(col_name, '').strip() for col_name in desc_config]
-                desc_val = ' '.join(part for part in desc_parts if part) # Join non-empty parts with a space
+                desc_val = ' '.join(part for part in desc_parts if part)
             elif isinstance(desc_config, str):
-                # Single description column
-                desc_val = row.get(desc_config, '').strip() # Use get() for safety
+                desc_val = row.get(desc_config, '').strip()
             else:
-                # Invalid config type
                 logger.error(f"Configuration error: '{desc_col_key}' must be a string or a list, got {type(desc_config)}")
                 raise TypeError(f"Configuration error: '{desc_col_key}' must be a string or a list, got {type(desc_config)}")
-            # --- End Handle Description ---
 
-            # Clean and parse amount to raw float
-            amount_str = str(row.get(amount_col, '0.0')).replace('$', '').replace(',', '').strip() # Use get() with default
-            # Handle empty string after cleaning - default to 0.0
-            if not amount_str:
-                 raw_amount_val = 0.0
-                 # Log a warning if the original column wasn't actually empty, 
-                 # but became empty after cleaning (e.g., just contained '$')
-                 if row.get(amount_col):
-                      logger.warning(f"Amount column '{amount_col}' contained non-numeric data '{row[amount_col]}' in row. Treating as 0.0. Row: {row}")
-            else:
-                try:
-                    raw_amount_val = float(amount_str)
-                except ValueError:
-                     logger.error(f"Could not convert cleaned amount string '{amount_str}' to float for column '{amount_col}'. Row: {row}")
-                     raise # Re-raise the ValueError to be caught by the processor
+            # --- Handle Currency and Amount ---
+            detected_currency = None
+            amount_val = 0.0
 
-            # Adjust sign based on config: We want positive to represent an expense internally.
-            # If expenses in the CSV are positive (flag=True), keep the sign.
-            # If expenses in the CSV are negative (flag=False), negate the value.
+            # Try each currency in priority order
+            for currency in currency_priority:
+                if currency not in currency_columns:
+                    logger.warning(f"Currency '{currency}' in priority list not found in currency_columns. Skipping.")
+                    continue
+
+                amount_col = currency_columns[currency]
+                amount_str = str(row.get(amount_col, '0.0')).replace('$', '').replace(',', '').strip()
+
+                if amount_str and amount_str != '0.0':
+                    try:
+                        raw_amount_val = float(amount_str)
+                        if raw_amount_val != 0.0:
+                            detected_currency = currency
+                            amount_val = raw_amount_val
+                            break
+                    except ValueError:
+                        logger.warning(f"Could not convert amount '{amount_str}' to float for currency '{currency}'. Trying next currency.")
+
+            # If no currency was detected, use default
+            if detected_currency is None:
+                detected_currency = default_currency
+                logger.info(f"No valid amount found in any currency column. Using default currency: {default_currency}")
+
+            # Adjust sign based on config
             if not expenses_positive:
-                # If expenses are negative in the CSV, a negative number is an expense.
-                # We negate it to make it positive (our internal convention for expense).
-                # A positive number in the CSV (income) becomes negative.
-                amount_val = -raw_amount_val
-            else:
-                 # If expenses are positive in the CSV, a positive number is an expense (keep sign).
-                 # A negative number (income) remains negative.
-                 amount_val = raw_amount_val
+                amount_val = -amount_val
 
         except KeyError as e:
-             logger.error(f"Missing column '{e}' needed for RawTransaction creation in row: {row}")
-             raise # Re-raise KeyError to be caught by the processor
+            logger.error(f"Missing column '{e}' needed for RawTransaction creation in row: {row}")
+            raise
         except ValueError as e:
-             logger.error(f"Value error parsing data for RawTransaction in row: {row} - {e}")
-             raise # Re-raise ValueError
+            logger.error(f"Value error parsing data for RawTransaction in row: {row} - {e}")
+            raise
         except Exception as e:
-             logger.error(f"Unexpected error during RawTransaction.from_row: {e}", exc_info=True)
-             raise # Re-raise unexpected errors
+            logger.error(f"Unexpected error during RawTransaction.from_row: {e}", exc_info=True)
+            raise
 
         return cls(
             _date=date_val,
             _description=desc_val,
-            _amount=amount_val, # Store the adjusted-sign amount
-            _raw_data=row # Store the original row data
+            _amount=amount_val,
+            _currency=detected_currency,
+            _raw_data=row
         )
 
 @dataclass(eq=False) # Use BaseTransaction __eq__ and __hash__
@@ -186,14 +189,14 @@ class Transaction(BaseTransaction):
         return self._amount
 
     @classmethod
-    def from_raw(cls, raw: RawTransaction, currency: str, category: str,
+    def from_raw(cls, raw: RawTransaction, category: str,
                 subcategory: str = "", tag: str = "", merchant: str = "") -> 'Transaction':
         """Create a Transaction from a RawTransaction."""
         return cls(
             raw.date,
             raw.description,
-            raw.amount, # Use the already correctly-signed amount from RawTransaction
-            currency,
+            raw.amount,
+            raw.currency, # Use the detected currency from RawTransaction
             category,
             subcategory,
             tag,
@@ -208,16 +211,15 @@ class Transaction(BaseTransaction):
         Uses the provided date_parser function.
         """
         try:
-            # Use the provided date parser
             date_val = date_parser(row["Transaction Date"])
-            # Amount from our CSV should already be correctly signed (positive=expense)
             amount_val = float(row["Amount"])
+            currency_val = row.get("Currency", "CAD") # Default to CAD if not present
 
             return cls(
                 _date=date_val,
                 _description=row["Description"],
                 _amount=amount_val,
-                currency=row["Currency"],
+                currency=currency_val,
                 category=row["Category"],
                 subcategory=row["Subcategory"],
                 tag=row["Tag"],
@@ -225,10 +227,10 @@ class Transaction(BaseTransaction):
             )
         except KeyError as e:
             logger.error(f"Missing expected column '{e}' in stored transaction row: {row}")
-            raise # Re-raise to be handled by read_transactions
+            raise
         except ValueError as e:
-             logger.error(f"Value error parsing stored transaction row: {row} - {e}")
-             raise # Re-raise
+            logger.error(f"Value error parsing stored transaction row: {row} - {e}")
+            raise
         except Exception as e:
-             logger.error(f"Unexpected error during Transaction.from_row: {e}", exc_info=True)
-             raise # Re-raise unexpected errors 
+            logger.error(f"Unexpected error during Transaction.from_row: {e}", exc_info=True)
+            raise 

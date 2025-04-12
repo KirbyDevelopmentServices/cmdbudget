@@ -26,3 +26,38 @@ Modified `TransactionOperations.read_transactions` to use a dedicated internal f
 
 **Preventive Measures:**
 Separated date parsing logic for internal storage vs. external input to ensure consistent interpretation based on known formats.
+
+## 2024-04-11
+**Author:** Claude 3.7 Sonnet
+
+**Bug Description:**
+The reporting feature was displaying months without transactions and incorrectly parsing dates from `transactions.csv`. The issue was caused by inconsistent date parsing between storage and input formats.
+
+**Root Cause Analysis:**
+1. The `transactions.csv` file uses a consistent `dd/mm/yy` format for storage
+2. The `parse_date_multi_format` function in `utils.py` was trying multiple formats, starting with `mm/dd/yy`
+3. This caused dates like "04/03/25" to be interpreted as April 3rd instead of March 4th
+4. The incorrect date parsing led to:
+   - Months being displayed without transactions
+   - Incorrect transaction dates in reports
+   - Future months appearing in the reporting menu
+
+**Solution Implemented:**
+1. Created a new `config.py` file to centralize date format configuration:
+   - `STORAGE_DATE_FORMAT = "%d/%m/%y"` for consistent storage format
+   - `INPUT_DATE_FORMATS` for flexible parsing of new transactions
+2. Updated `transaction_operations.py` to:
+   - Use `STORAGE_DATE_FORMAT` when reading/writing to `transactions.csv`
+   - Use a dedicated `parse_stored_date` function for internal storage
+3. Modified `utils.py` to use `INPUT_DATE_FORMATS` from config for flexible parsing
+
+**Preventive Measures:**
+1. Centralized date format configuration in `config.py`
+2. Separated storage and input date parsing logic
+3. Added clear documentation of date formats in configuration
+4. Improved error messages for date parsing failures
+
+**Related Changes:**
+- Updated `README.md` to document the date format configuration
+- Updated `ARCHITECTURE.md` to reflect the new configuration system
+- Added logging for date parsing issues

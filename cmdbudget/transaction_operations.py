@@ -9,15 +9,10 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from .transaction import Transaction, RawTransaction
 from .utils import parse_date_multi_format # Import from utils
+from .config import STORAGE_DATE_FORMAT, CSV_FIELDNAMES
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
-
-# Define standard CSV fieldnames once
-CSV_FIELDNAMES = [
-    "Transaction Date", "Description", "Amount", "Currency",
-    "Category", "Subcategory", "Tag", "Merchant"
-]
 
 class TransactionOperations:
     """Provides a unified API for transaction CRUD operations against a CSV file."""
@@ -66,10 +61,8 @@ class TransactionOperations:
     @staticmethod
     def _transaction_to_row(transaction: Transaction) -> Dict[str, str]: # Make private
         """Convert a Transaction object to a row dictionary for CSV storage."""
-        # Use the specified dd/mm/yy format for writing
-        date_format = "%d/%m/%y"
         return {
-            "Transaction Date": transaction.date.strftime(date_format),
+            "Transaction Date": transaction.date.strftime(STORAGE_DATE_FORMAT),
             "Description": transaction.description,
             # Store amount with 2 decimal places consistently (positive=expense)
             "Amount": f"{transaction.amount:.2f}",
@@ -122,10 +115,10 @@ class TransactionOperations:
                 # Define a specific parser for the known stored date format
                 def parse_stored_date(date_str):
                     try:
-                        return datetime.strptime(date_str, "%d/%m/%y")
+                        return datetime.strptime(date_str, STORAGE_DATE_FORMAT)
                     except ValueError as e:
                         # Re-raise with more context if specific format fails
-                        raise ValueError(f"Error parsing stored date '{date_str}' with format %d/%m/%y: {e}") from e
+                        raise ValueError(f"Error parsing stored date '{date_str}' with format {STORAGE_DATE_FORMAT}: {e}") from e
 
                 line_num = 1 # For error reporting (header is line 1)
                 for row in reader:

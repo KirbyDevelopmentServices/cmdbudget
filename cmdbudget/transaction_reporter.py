@@ -50,8 +50,14 @@ class TransactionReporter:
         }
 
     def get_available_months(self) -> List[Tuple[int, int]]:
-        """Returns a sorted list of (year, month) tuples."""
-        return sorted(self.month_grouped_transactions.keys())
+        """Returns a sorted list of (year, month) tuples that have transactions."""
+        # Only include months that have transactions
+        available_months = [
+            (year, month) 
+            for (year, month), transactions in self.month_grouped_transactions.items()
+            if transactions  # Only include months with transactions
+        ]
+        return sorted(available_months)
 
     def get_available_categories(self) -> List[str]:
         """Returns a sorted list of unique categories, excluding IGNORED."""

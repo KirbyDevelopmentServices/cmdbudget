@@ -37,11 +37,9 @@ def load_config():
         'transaction_file_path': DEFAULT_TRANSACTIONS_FILE,
         'new_transaction_file_path': DEFAULT_NEW_TRANSACTIONS_FILE
     }
-    # Remove default_csv_structure dictionary
 
     if not os.path.exists(CONFIG_FILE):
         Display.warning(f"{CONFIG_FILE} not found. Creating default configuration with storage paths only.")
-        # Only create default storage config
         default_config = {
             'storage': default_storage_config 
         }
@@ -55,7 +53,6 @@ def load_config():
             Display.error(f"Could not create default {CONFIG_FILE}: {e}")
             sys.exit(f"Error: Could not create {CONFIG_FILE}. Exiting.")
 
-    # Load existing config file
     try:
         with open(CONFIG_FILE, 'r', encoding='utf-8') as file: 
             config = yaml.safe_load(file)
@@ -63,13 +60,11 @@ def load_config():
                  Display.error(f"{CONFIG_FILE} is empty. Please provide a valid configuration.")
                  sys.exit(f"Error: {CONFIG_FILE} is empty. Exiting.")
 
-            # --- Validation and Defaulting --- 
-            # 1. Validate REQUIRED 'import_csv_structure' section
             if 'import_csv_structure' not in config:
                 Display.error(f"Required section 'import_csv_structure' not found in {CONFIG_FILE}.")
                 sys.exit(f"Configuration error: Missing 'import_csv_structure' section. Exiting.")
             
-            csv_config = config['import_csv_structure'] # Use the new name
+            csv_config = config['import_csv_structure']
 
             if not isinstance(csv_config, dict):
                 Display.error(f"'import_csv_structure' section in {CONFIG_FILE} must be a dictionary.")
@@ -86,24 +81,67 @@ def load_config():
             if 'default_currency' not in csv_config:
                  Display.warning(f"'default_currency' missing in {CONFIG_FILE}['import_csv_structure']. Using default: 'CAD'")
                  csv_config['default_currency'] = 'CAD'
+            
             if 'expenses_are_positive' not in csv_config:
                  Display.warning(f"'expenses_are_positive' missing in {CONFIG_FILE}['import_csv_structure']. Using default: True")
                  csv_config['expenses_are_positive'] = True
-            # Validate the type of expenses_are_positive
+            
             if not isinstance(csv_config.get('expenses_are_positive'), bool):
                  Display.error(f"'expenses_are_positive' in {CONFIG_FILE}['import_csv_structure'] must be true or false.")
                  sys.exit(f"Error: Invalid value for 'expenses_are_positive'. Exiting.")
+
+            # Handle new currency configuration
+            if 'currency_columns' not in csv_config:
+                Display.warning(f"'currency_columns' missing in {CONFIG_FILE}['import_csv_structure']. Using default: {{'CAD': 'CAD$'}}")
+                csv_config['currency_columns'] = {'CAD': 'CAD$'}
+            
+            if 'currency_priority' not in csv_config:
+                Display.warning(f"'currency_priority' missing in {CONFIG_FILE}['import_csv_structure']. Using default: ['CAD']")
+                csv_config['currency_priority'] = ['CAD']
+            
+            if 'currency_formatting' not in csv_config:
+                Display.warning(f"'currency_formatting' missing in {CONFIG_FILE}['import_csv_structure']. Using default formatting")
+                csv_config['currency_formatting'] = {
+                    'CAD': {
+                        'symbol': '$',
+                        'position': 'before',
+                        'decimal_places': 2
+                    }
+                }
+
+            # Validate currency configuration
+            if not isinstance(csv_config['currency_columns'], dict):
+                Display.error(f"'currency_columns' in {CONFIG_FILE}['import_csv_structure'] must be a dictionary.")
+                sys.exit(f"Error: Invalid currency_columns configuration. Exiting.")
+            
+            if not isinstance(csv_config['currency_priority'], list):
+                Display.error(f"'currency_priority' in {CONFIG_FILE}['import_csv_structure'] must be a list.")
+                sys.exit(f"Error: Invalid currency_priority configuration. Exiting.")
+            
+            if not isinstance(csv_config['currency_formatting'], dict):
+                Display.error(f"'currency_formatting' in {CONFIG_FILE}['import_csv_structure'] must be a dictionary.")
+                sys.exit(f"Error: Invalid currency_formatting configuration. Exiting.")
+
+            # Validate currency priority contains valid currency codes
+            for currency in csv_config['currency_priority']:
+                if currency not in csv_config['currency_columns']:
+                    Display.error(f"Currency '{currency}' in currency_priority not found in currency_columns.")
+                    sys.exit(f"Error: Invalid currency in currency_priority. Exiting.")
+
+            # Validate default currency is in currency_columns
+            if csv_config['default_currency'] not in csv_config['currency_columns']:
+                Display.error(f"Default currency '{csv_config['default_currency']}' not found in currency_columns.")
+                sys.exit(f"Error: Invalid default currency. Exiting.")
 
             # 2. Handle optional 'storage' section
             if 'storage' not in config:
                 Display.warning(f"'storage' section not found in {CONFIG_FILE}. Using default file paths: {default_storage_config}")
                 config['storage'] = default_storage_config
             else:
-                 # Validate storage structure if present
                  if not isinstance(config['storage'], dict):
                       Display.error(f"'storage' section in {CONFIG_FILE} must be a dictionary.")
                       sys.exit(f"Error: Invalid 'storage' section. Exiting.")
-                 # Apply defaults for missing keys within storage
+                 
                  if 'transaction_file_path' not in config['storage']:
                       Display.warning(f"'transaction_file_path' missing in {CONFIG_FILE}['storage']. Using default: {DEFAULT_TRANSACTIONS_FILE}")
                       config['storage']['transaction_file_path'] = DEFAULT_TRANSACTIONS_FILE
@@ -114,17 +152,13 @@ def load_config():
             logger.debug(f"Loaded configuration: {config}")
             return config
     except yaml.YAMLError as e:
-        # Use Display.error instead of logger.error
         Display.error(f"Error parsing {CONFIG_FILE}: {e}")
         sys.exit(f"Error: Could not parse {CONFIG_FILE}. Exiting.")
     except IOError as e:
-        # Use Display.error instead of logger.error
         Display.error(f"Could not read {CONFIG_FILE}: {e}")
         sys.exit(f"Error: Could not read {CONFIG_FILE}. Exiting.")
     except Exception as e:
-        # Keep internal error log call
         logger.error(f"Unexpected error loading {CONFIG_FILE}: {e}", exc_info=True)
-        # Use Display.error for user feedback
         Display.error(f"Unexpected error loading {CONFIG_FILE}. Please check logs.")
         sys.exit(f"Error loading {CONFIG_FILE}. Exiting.")
 

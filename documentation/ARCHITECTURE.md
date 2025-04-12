@@ -151,6 +151,27 @@ The application uses file-based storage with no external database:
 
 ## Configuration System
 
+The application uses a centralized configuration system to manage various settings and formats:
+
+### Date Handling
+- Storage Format: All dates in `transactions.csv` are stored in `dd/mm/yy` format
+- Input Formats: Multiple date formats are supported for new transactions
+- Configuration: Date formats are defined in `config.py`:
+  - `STORAGE_DATE_FORMAT`: Format used for internal storage
+  - `INPUT_DATE_FORMATS`: List of formats supported for new transactions
+
+### Currency Handling
+- Configuration: Currency settings are defined in `config.py`:
+  - `DEFAULT_CURRENCY`: Fallback currency when none is specified
+  - `CURRENCY_PRIORITY`: Order of currency detection from CSV columns
+  - `CURRENCY_FORMATS`: Formatting rules for each currency
+
+### File Paths
+- Configuration: File paths are defined in `config.py`:
+  - `TRANSACTIONS_FILE`: Path to the transactions CSV file
+  - `CATEGORIES_FILE`: Path to the categories CSV file
+  - `CONFIG_DIR`: Directory for configuration files
+
 The application uses a layered configuration approach:
 1. Default values hardcoded in the application
 2. Values from configuration files

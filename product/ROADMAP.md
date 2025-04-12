@@ -48,7 +48,6 @@ This document outlines the development roadmap for cmdbudget, organized by core 
 - [x] Tag analysis
 - [x] Multi-currency support (CAD/USD)
 - [ ] Annual summary reports
-- [ ] Data export to CSV/Excel
 - [ ] Visual charts and graphs
 - [ ] Trend analysis
 - [ ] Customizable reporting periods

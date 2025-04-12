@@ -1,0 +1,126 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: Process for architectural refinement of user stories
+globs: ["product/features/*/*.md", "product/features/*/user_stories/*.md"]
+alwaysApply: false
+---
+
+# Architectural Refinement of User Stories
+
+This rule documents the process for performing architectural analysis and refinement of user stories in the cmdbudget project. As the Technical Software Architect, I analyze user stories to evaluate complexity, identify technical blockers, and provide architectural guidance.
+
+## Triggering Architectural Refinement
+
+When the user requests a Technical Software Architect to analyze a user story by using the command **"refine this user story"**, I will perform the following analysis process and append a TSA Analysis section to the user story markdown file.
+
+## Analysis Process
+
+The architectural refinement process follows these steps:
+
+1. **Review the User Story**:
+   - Understand the requirements and acceptance criteria
+   - Identify the key functional components involved
+   - Determine which system modules will be affected
+
+2. **Analyze System Architecture**:
+   - Review the ARCHITECTURE.md document to understand:
+     - Core components that will be impacted
+     - Data flow implications
+     - Integration points with existing modules
+     - Extension points that can be leveraged
+     - Design patterns relevant to the implementation
+
+3. **Examine Change History**:
+   - Review CHANGELOG.AI to identify:
+     - Recent changes to affected components
+     - Related features already implemented
+     - Potential improvements that can be leveraged
+     - Technical debt in related areas
+
+4. **Review Known Issues**:
+   - Consult FIXED.md to understand:
+     - Previously resolved bugs in related functionality
+     - Potential pitfalls to avoid
+     - Edge cases that need special handling
+
+5. **Evaluate Implementation Complexity**:
+   - Score complexity on a scale of 1-10
+   - Consider factors detailed in "Complexity Scoring Methodology"
+   - Provide justification for the complexity score
+
+6. **Identify Technical Blockers**:
+   - Determine architectural limitations
+   - Highlight gaps in current implementation
+   - Flag potential conflicts with existing functionality
+
+7. **Document Architectural Insights**:
+   - Add a "TSA Analysis" section to the user story
+   - Provide detailed architectural guidance
+   - Suggest implementation approaches
+
+## Complexity Scoring Methodology
+
+When scoring the implementation complexity on a scale of 1-10, consider:
+
+| Score | Description | Characteristics |
+|-------|-------------|-----------------|
+| 1-2   | Very Simple | - Single component <br> - No or minimal data changes <br> - No external dependencies <br> - Well-established patterns |
+| 3-4   | Simple      | - 2-3 components <br> - Minor data model changes <br> - Familiar implementation patterns <br> - Few edge cases |
+| 5-6   | Moderate    | - Multiple components <br> - Data model changes <br> - Some integration complexity <br> - Several edge cases to handle |
+| 7-8   | Complex     | - Cross-cutting changes <br> - Significant data model changes <br> - Complex logic or algorithms <br> - Many edge cases and validations |
+| 9-10  | Very Complex| - Architectural changes <br> - Extensive refactoring needed <br> - New design patterns required <br> - Performance or security challenges |
+
+## TSA Analysis Template
+
+Each architectural refinement should append a "TSA Analysis" section to the user story markdown file with the following structure:
+
+```markdown
+## TSA Analysis
+
+### Complexity Assessment
+**Score: [1-10]**
+
+[Explanation of the complexity score, including key factors that influenced it]
+
+### Architectural Impact
+- **Components Affected**: [List of components that will be modified]
+- **Data Flow Changes**: [Description of how data flow will change]
+- **Integration Points**: [Key integration points with existing functionality]
+
+### Technical Blockers
+- [Blocker 1]: [Description and impact]
+- [Blocker 2]: [Description and impact]
+- ...
+
+### Implementation Recommendations
+- [Recommendation 1]: [Details and reasoning]
+- [Recommendation 2]: [Details and reasoning]
+- ...
+
+### Technical Considerations
+- **Performance**: [Performance implications or considerations]
+- **Error Handling**: [Special error cases to consider]
+- **Backward Compatibility**: [Compatibility concerns and mitigation]
+- **Testing Approach**: [Recommended testing strategy]
+
+### Related Changes
+[Reference to related changes from CHANGELOG.AI or FIXED.md that provide context]
+```
+
+## Example Application
+
+Let's consider a theoretical example: "As a user, I want to view transactions in multiple currencies with the ability to see equivalent values in my base currency."
+
+The TSA Analysis would:
+1. Review ARCHITECTURE.md to understand how Transaction data model, Reporting, and Display components work together
+2. Note from CHANGELOG.AI that there was already work on handling multi-currency issues in amount parsing
+3. Check FIXED.md for any currency-related bugs
+4. Evaluate complexity based on changes needed across data model, processing, and reporting
+5. Document architectural approach, considering how the current design patterns support this extension
+6. Identify any blockers, such as the need for currency conversion rates
+
+This approach ensures that user stories are analyzed within the context of the existing architecture, incorporating system history and known issues to provide comprehensive guidance for implementation.

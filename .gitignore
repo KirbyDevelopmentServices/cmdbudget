@@ -17,6 +17,7 @@ venv/
 
 .DS_Store
 Budgetting.code-workspace
-
+Budgetting.code-workspace.zip
 # VSCode
 .vscode/
+.cursor/

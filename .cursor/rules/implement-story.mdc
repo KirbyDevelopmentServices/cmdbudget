@@ -1,7 +1,7 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 ---
 description: Command rule for implementing user stories as Senior Software Developer
@@ -50,20 +50,11 @@ When the user says "implement this user story", the Senior Software Developer wi
       git commit -m "[Commit Message from Step B]"
       ```
 
-3. **Final Code Review and Refactoring**
+3. **Final Code Review**
    - Review all changes on the branch
    - Identify opportunities for simple refactoring
    - Apply refactoring if it improves code quality without changing functionality
    - Create final commit for any refactoring changes
-
-4. **Commit Outstanding Changes**
-   - Stage any remaining changes
-   - Create a final commit message summarizing the refactoring work
-   - Commit the changes
-
-5. **Push Branch**
-   - Push the branch to the remote repository using a login shell
-   - Command: `push <branch_name>`
 
 ## Implementation Guidelines
 - Follow Test-Driven Development (TDD) approach
@@ -99,4 +90,3 @@ Date: 2024-04-02
 - Changes are properly committed with descriptive messages
 - Code quality is maintained or improved
 - Documentation is updated as needed
-- Branch is successfully pushed to remote repository
